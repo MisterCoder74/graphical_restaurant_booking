@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Gestione Prenotazioni - Dashboard</title>
+<style>
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+        .header {
+background: #2c3e50;
+color: white;
+padding: 15px 20px;
+}        
+
+h1 {
+    text-align: center;
+    color: white;
+    margin-bottom: 30px;
+    font-size: 2.5rem;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+}
+
+.controls {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.btn-clean {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    margin-left: 12px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(231, 76, 60, 0.3);
+}
+
+.btn-clean:hover {
+    background: linear-gradient(135deg, #c0392b, #a93226);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(231, 76, 60, 0.4);
+}
+
+.btn-clean:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(231, 76, 60, 0.3);
+}        
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.filter-group label {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 0.9rem;
+}
+
+select, input {
+    padding: 8px 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 5px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+select:focus, input:focus {
+    border-color: #3498db;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.stat-card {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    color: #7f8c8d;
+    font-size: 0.9rem;
+}
+
+.stat-card.oggi .stat-number { color: #3498db; }
+.stat-card.attive .stat-number { color: #27ae60; }
+.stat-card.completate .stat-number { color: #f39c12; }
+.stat-card.cancellate .stat-number { color: #e74c3c; }
+
+.table-container {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #ecf0f1;
+}
+
+th {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+tbody tr {
+    transition: all 0.3s ease;
+}
+
+tbody tr:hover {
+    background-color: #f8f9fa;
+    transform: scale(1.01);
+}
+
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.status-attiva { background-color: #d4edda; color: #155724; }
+.status-completata { background-color: #fff3cd; color: #856404; }
+.status-cancellata { background-color: #f8d7da; color: #721c24; }
+
+.time-info {
+    font-size: 0.9rem;
+    color: #7f8c8d;
+    margin-top: 3px;
+}
+
+.time-urgent { color: #e74c3c; font-weight: bold; }
+.time-soon { color: #f39c12; font-weight: bold; }
+.time-today { color: #27ae60; }
+
+.actions {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.btn-cancel { background-color: #e74c3c; color: white; }
+.btn-complete { background-color: #27ae60; color: white; }
+.btn-free { background-color: #f39c12; color: white; }
+.btn-refresh { background-color: #3498db; color: white; }
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #7f8c8d;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #7f8c8d;
+}
+
+.empty-state h3 {
+    margin-bottom: 10px;
+    font-size: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    table {
+        font-size: 0.9rem;
+    }
+    
+    .actions {
+        flex-direction: column;
+    }
+}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+    <h1>Gestione Prenotazioni</h1>
+    <a style="padding: 8px 12px; margin: 6px 0; border-radius: 8px; background: blue; color: white; text-decoration: none; cursor: pointer;" href="dashboard.html">Torna alla Dashboard</a>
+</div>        
+    <!-- Controlli e Filtri -->
+    <div class="controls">
+        <div class="filter-group">
+            <label>Filtro per Stato:</label>
+            <select id="statusFilter">
+                <option value="">Tutti gli stati</option>
+                <option value="attiva">Solo Attive</option>
+                <option value="completata">Solo Completate</option>
+                <option value="cancellata">Solo Cancellate</option>
+            </select>
+        </div>
+        
+        <div class="filter-group">
+            <label>Filtro per Data:</label>
+            <select id="dateFilter">
+                <option value="">Tutte le date</option>
+                <option value="today">Solo Oggi</option>
+                <option value="tomorrow">Solo Domani</option>
+                <option value="week">Prossimi 7 giorni</option>
+            </select>
+        </div>
+        
+        <div class="filter-group">
+            <label>Cerca per Cognome:</label>
+            <input type="text" id="nameSearch" placeholder="Inserisci cognome...">
+        </div>
+        
+        <button class="btn-refresh" onclick="loadBookings()">🔄 Aggiorna</button>
+            <button class="btn-clean" onclick="cleanCompletedBookings()">🧹 Pulisci Lista (*)</button>
+            
+    </div>
+    <span style="margin: 12px; padding: 8px; color: white;">(*) Le prenotazioni saranno sempre visibili nel file di configurazione tavoli<br></span>
+    <br>
+    <div class="stats">
+        <div class="stat-card oggi">
+            <div class="stat-number" id="statOggi">0</div>
+            <div class="stat-label">Prenotazioni Oggi</div>
+        </div>
+        <div class="stat-card attive">
+            <div class="stat-number" id="statAttive">0</div>
+            <div class="stat-label">Attive</div>
+        </div>
+        <div class="stat-card completate">
+            <div class="stat-number" id="statCompletate">0</div>
+            <div class="stat-label">Completate</div>
+        </div>
+        <div class="stat-card cancellate">
+            <div class="stat-number" id="statCancellate">0</div>
+            <div class="stat-label">Cancellate</div>
+        </div>
+    </div>
+    
+    <!-- Tabella -->
+    <div class="table-container">
+        <table id="bookingsTable">
+            <thead>
+                <tr>
+                    <th>🏪 Tavolo</th>
+                    <th>👤 Cognome</th>
+                    <th>📅 Data</th>
+                    <th>🕐 Ora</th>
+                    <th>👥 Persone</th>
+                    <th>📊 Stato</th>
+                    <th>⏰ Timing</th>
+                    <th>🔧 Azioni</th>
+                </tr>
+            </thead>
+            <tbody id="bookingsBody">
+                <tr>
+                    <td colspan="8" class="loading">🔄 Caricamento prenotazioni...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+let allBookings = [];
+let autoRefreshTimer = null;
+
+// Carica le prenotazioni
+async function loadBookings() {
+    try {
+        const response = await fetch('bookings.json', { 
+            cache: 'no-store',
+            headers: {'Cache-Control': 'no-store'}
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        allBookings = await response.json();
+        
+        // Assicurati che ogni prenotazione abbia un ID univoco
+        allBookings = allBookings.map((booking, index) => ({
+            ...booking,
+            id: booking.id || `booking_${Date.now()}_${index}`,
+            status: booking.status || 'attiva'
+        }));
+        
+        renderBookings();
+        updateStats();
+        console.log('✅ Prenotazioni caricate:', allBookings.length);
+        
+    } catch (error) {
+        console.error('❌ Errore caricamento prenotazioni:', error);
+        document.getElementById('bookingsBody').innerHTML = `
+            <tr><td colspan="8" style="text-align: center; color: #e74c3c; padding: 40px;">
+                ❌ Errore nel caricamento delle prenotazioni: ${error.message}
+            </td></tr>
+        `;
+    }
+}
+
+// Filtra e renderizza le prenotazioni
+function renderBookings() {
+    const statusFilter = document.getElementById('statusFilter').value;
+    const dateFilter = document.getElementById('dateFilter').value;
+    const nameSearch = document.getElementById('nameSearch').value.toLowerCase();
+    
+    let filtered = allBookings.filter(booking => {
+        // Filtro per stato
+        if (statusFilter && booking.status !== statusFilter) return false;
+        
+        // Filtro per nome
+        if (nameSearch && !booking.cognome.toLowerCase().includes(nameSearch)) return false;
+        
+        // Filtro per data
+        if (dateFilter) {
+            const bookingDate = new Date(booking.data);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            switch (dateFilter) {
+                case 'today':
+                    const todayStr = today.toISOString().split('T')[0];
+                    if (booking.data !== todayStr) return false;
+                    break;
+                case 'tomorrow':
+                    const tomorrow = new Date(today);
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+                    if (booking.data !== tomorrowStr) return false;
+                    break;
+                case 'week':
+                    const weekFromNow = new Date(today);
+                    weekFromNow.setDate(weekFromNow.getDate() + 7);
+                    if (bookingDate > weekFromNow) return false;
+                    break;
+            }
+        }
+        
+        return true;
+    });
+    
+    // Ordina per data/ora
+    filtered.sort((a, b) => {
+        const dateA = new Date(`${a.data}T${a.ora}`);
+        const dateB = new Date(`${b.data}T${b.ora}`);
+        return dateA - dateB;
+    });
+    
+    const tbody = document.getElementById('bookingsBody');
+    
+    if (filtered.length === 0) {
+        tbody.innerHTML = `
+            <tr><td colspan="8" class="empty-state">
+                <h3>📭 Nessuna prenotazione trovata</h3>
+                <p>Prova a modificare i filtri di ricerca</p>
+            </td></tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = filtered.map(booking => {
+        const timeInfo = getTimeInfo(booking);
+        const actions = getActionButtons(booking);
+        
+        return `
+            <tr data-booking-id="${booking.id}">
+                <td><strong>${booking.tableName}</strong></td>
+                <td>${booking.cognome}</td>
+                <td>${formatDate(booking.data)}</td>
+                <td><strong>${booking.ora}</strong></td>
+                <td><span style="background: #ecf0f1; padding: 2px 8px; border-radius: 10px;">${booking.persone}</span></td>
+                <td><span class="status-badge status-${booking.status}">${booking.status}</span></td>
+                <td>${timeInfo}</td>
+                <td><div class="actions">${actions}</div></td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Calcola informazioni temporali
+function getTimeInfo(booking) {
+    const now = new Date();
+    const bookingDateTime = new Date(`${booking.data}T${booking.ora}`);
+    const diffMs = bookingDateTime - now;
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    
+    if (booking.status !== 'attiva') {
+        return `<span class="time-info">-</span>`;
+    }
+    
+    if (diffMinutes < 0) {
+        // Prenotazione già passata
+        const minutesAgo = Math.abs(diffMinutes);
+        const hoursAgo = Math.floor(minutesAgo / 60);
+        const remainingMinutes = minutesAgo % 60;
+        
+        if (hoursAgo > 0) {
+            return `<span class="time-urgent">⏰ ${hoursAgo}h ${remainingMinutes}m fa</span>`;
+        } else {
+            return `<span class="time-urgent">⏰ ${minutesAgo}m fa</span>`;
+        }
+    } else if (diffMinutes < 60) {
+        // Meno di 1 ora
+        return `<span class="time-urgent">🔥 Tra ${diffMinutes}m</span>`;
+    } else if (diffMinutes < 180) {
+        // Meno di 3 ore - mostra ore e minuti
+        const hours = Math.floor(diffMinutes / 60);
+        const minutes = diffMinutes % 60;
+        return `<span class="time-soon">⚡ Tra ${hours}h ${minutes}m</span>`;
+    } else if (diffMinutes < 1440) {
+        // Meno di 24 ore - mostra solo ore
+        const hours = Math.floor(diffMinutes / 60);
+        return `<span class="time-today">📅 Tra ${hours}h</span>`;
+    } else {
+        // Più di 24 ore
+        const days = Math.floor(diffMinutes / 1440);
+        const hours = Math.floor((diffMinutes % 1440) / 60);
+        if (hours > 0) {
+            return `<span class="time-info">📆 Tra ${days}g ${hours}h</span>`;
+        } else {
+            return `<span class="time-info">📆 Tra ${days}g</span>`;
+        }
+    }
+}
+
+// Genera pulsanti azione in base allo stato
+function getActionButtons(booking) {
+    switch (booking.status) {
+        case 'attiva':
+            return `
+                <button class="btn-complete" onclick="completeBooking('${booking.id}')">✅ Completa</button>
+                <button class="btn-cancel" onclick="cancelBooking('${booking.id}')">❌ Cancella</button>
+                <button class="btn-free" onclick="freeTable('${booking.id}')">🔓 Libera Tavolo</button>
+            `;
+        case 'completata':
+            return `<span style="color: #27ae60;">✅ Completata</span>`;
+        case 'cancellata':
+            return `<span style="color: #e74c3c;">❌ Cancellata</span>`;
+        default:
+            return '';
+    }
+}
+
+// Formatta la data
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    if (dateString === today.toISOString().split('T')[0]) {
+        return '<strong style="color: #27ae60;">🟢 Oggi</strong>';
+    } else if (dateString === tomorrow.toISOString().split('T')[0]) {
+        return '<strong style="color: #f39c12;">🟡 Domani</strong>';
+    } else {
+        return date.toLocaleDateString('it-IT', { 
+            weekday: 'short', 
+            day: 'numeric', 
+            month: 'short' 
+        });
+    }
+}
+
+// Aggiorna statistiche
+function updateStats() {
+    const today = new Date().toISOString().split('T')[0];
+    
+    const stats = {
+        oggi: allBookings.filter(b => b.data === today).length,
+        attive: allBookings.filter(b => b.status === 'attiva').length,
+        completate: allBookings.filter(b => b.status === 'completata').length,
+        cancellate: allBookings.filter(b => b.status === 'cancellata').length
+    };
+    
+    document.getElementById('statOggi').textContent = stats.oggi;
+    document.getElementById('statAttive').textContent = stats.attive;
+    document.getElementById('statCompletate').textContent = stats.completate;
+    document.getElementById('statCancellate').textContent = stats.cancellate;
+}
+        
+
+
+async function cleanCompletedBookings() {
+    // Conta le prenotazioni da rimuovere
+    const completedCount = allBookings.filter(b => b.status === 'completata').length;
+    const cancelledCount = allBookings.filter(b => b.status === 'cancellata').length;
+    const totalToRemove = completedCount + cancelledCount;
+    
+    if (totalToRemove === 0) {
+        alert('Non ci sono prenotazioni completate o cancellate da rimuovere');
+        return;
+    }
+    
+    const confirmMessage = `Stai per rimuovere definitivamente:\n` +
+                          `• ${completedCount} prenotazioni completate\n` +
+                          `• ${cancelledCount} prenotazioni cancellate\n\n` +
+                          `Totale: ${totalToRemove} prenotazioni\n\n` +
+                          `⚠️ ATTENZIONE: Questa operazione è irreversibile!\n\n` +
+                          `Continuare?`;
+    
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+    
+    try {
+        console.log('🧹 Avvio pulizia prenotazioni...');
+        
+        const response = await fetch('clean_bookings.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Errore del server');
+        }
+        
+        console.log('✅ Pulizia completata:', result);
+        
+        // Ricarica i dati dal server
+        await loadBookings();
+        
+        // Mostra messaggio di successo con statistiche
+        const stats = result.stats;
+        const successMessage = `🎉 Pulizia completata con successo!\n\n` +
+                              `📊 Statistiche:\n` +
+                              `• Prenotazioni prima: ${stats.total_before}\n` +
+                              `• Prenotazioni dopo: ${stats.total_after}\n` +
+                              `• Rimosse: ${stats.removed_count}\n` +
+                              `  - Completate: ${stats.completed_removed}\n` +
+                              `  - Cancellate: ${stats.cancelled_removed}`;
+        
+        alert(successMessage);
+        
+    } catch (error) {
+        console.error('❌ Errore pulizia:', error);
+        alert('Errore nella pulizia delle prenotazioni: ' + error.message);
+    }
+}        
+
+// Azioni sulle prenotazioni
+async function cancelBooking(id) {
+    const booking = allBookings.find(b => b.id === id);
+    if (!booking) return;
+    
+    if (!confirm(`Cancellare la prenotazione di ${booking.cognome} per il ${booking.data} alle ${booking.ora}?`)) {
+        return;
+    }
+    
+    try {
+        console.log('🔄 Cancellazione prenotazione:', id);
+        
+        const response = await fetch('cancel_booking.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ id: id })
+        });
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Errore del server');
+        }
+        
+        console.log('✅ Prenotazione cancellata con successo:', result);
+        
+        // Ricarica i dati dal server per essere sicuri
+        await loadBookings();
+        
+        alert('Prenotazione cancellata con successo');
+        
+    } catch (error) {
+        console.error('❌ Errore cancellazione:', error);
+        alert('Errore nella cancellazione della prenotazione: ' + error.message);
+    }
+}
+
+async function completeBooking(id) {
+    const booking = allBookings.find(b => b.id === id);
+    if (!booking) return;
+    
+    if (!confirm(`Segnare come completata la prenotazione di ${booking.cognome}?`)) {
+        return;
+    }
+    
+    try {
+        console.log('🔄 Completamento prenotazione:', id);
+        
+        const response = await fetch('complete_booking.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ id: id })
+        });
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Errore del server');
+        }
+        
+        console.log('✅ Prenotazione completata con successo:', result);
+        
+        // Ricarica i dati dal server per essere sicuri
+        await loadBookings();
+        
+        alert('Prenotazione completata con successo');
+        
+    } catch (error) {
+        console.error('❌ Errore completamento:', error);
+        alert('Errore nel completamento della prenotazione: ' + error.message);
+    }
+}
+async function freeTable(id) {
+    const booking = allBookings.find(b => b.id === id);
+    if (!booking) return;
+    
+    if (!confirm(`Liberare il tavolo ${booking.tableName}?`)) {
+        return;
+    }
+    
+    try {
+        // Chiama l'API esistente per liberare il tavolo
+        const response = await fetch('free_table.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({tableName: booking.tableName})
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            console.log('✅ Tavolo liberato:', booking.tableName);
+            alert('Tavolo liberato con successo');
+            // Ricarica i dati
+            await loadBookings();
+        } else {
+            throw new Error(result.error || 'Errore nella liberazione');
+        }
+        
+    } catch (error) {
+        console.error('❌ Errore liberazione tavolo:', error);
+        alert('Errore nella liberazione del tavolo: ' + error.message);
+    }
+}
+
+// Event listeners per i filtri
+document.getElementById('statusFilter').addEventListener('change', renderBookings);
+document.getElementById('dateFilter').addEventListener('change', renderBookings);
+document.getElementById('nameSearch').addEventListener('input', renderBookings);
+
+// Auto-refresh ogni 2 minuti
+function startAutoRefresh() {
+    autoRefreshTimer = setInterval(() => {
+        console.log('🔄 Auto-refresh prenotazioni...');
+        loadBookings();
+    }, 120000); // 2 minuti
+}
+
+function stopAutoRefresh() {
+    if (autoRefreshTimer) {
+        clearInterval(autoRefreshTimer);
+        autoRefreshTimer = null;
+    }
+}
+
+// Gestione visibilità pagina
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        stopAutoRefresh();
+    } else {
+        startAutoRefresh();
+        loadBookings(); // Refresh immediato quando torna visibile
+    }
+});
+
+// Inizializzazione
+window.addEventListener('load', () => {
+    loadBookings();
+    startAutoRefresh();
+});
+
+// Cleanup
+window.addEventListener('beforeunload', stopAutoRefresh);
+</script>
+</body>
+</html>
