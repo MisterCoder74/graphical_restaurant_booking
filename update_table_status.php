@@ -21,6 +21,41 @@ if (!file_exists('bookings.json')) {
     exit;
 }
 date_default_timezone_set('Europe/Rome');
+
+/**
+ * Valida le transizioni di stato dei tavoli
+ * Workflow valido: disponibile → prenotato → occupato → disponibile
+ * 
+ * @param string $oldStatus Lo stato precedente
+ * @param string $newStatus Il nuovo stato
+ * @return bool True se la transizione è valida
+ */
+function isValidStatusTransition($oldStatus, $newStatus) {
+    // Se lo stato non cambia, è sempre valido
+    if ($oldStatus === $newStatus) {
+        return true;
+    }
+    
+    // Transizioni valide
+    $validTransitions = [
+        'disponibile' => ['prenotato', 'occupato'],  // Da disponibile a prenotato o occupato
+        'prenotato' => ['occupato', 'disponibile'],  // Da prenotato a occupato o disponibile (se cancellato)
+        'occupato' => ['disponibile'],                // Da occupato a disponibile (quando liberato)
+    ];
+    
+    // Verifica se la transizione è valida
+    if (isset($validTransitions[$oldStatus]) && 
+        in_array($newStatus, $validTransitions[$oldStatus])) {
+        return true;
+    }
+    
+    // Consenti sempre di tornare a disponibile (per gestire cancellazioni/scadenze)
+    if ($newStatus === 'disponibile') {
+        return true;
+    }
+    
+    return false;
+}
 try {
     $tablesFile = 'tables_conf.json';
     $bookingsFile = 'bookings.json';
@@ -65,40 +100,57 @@ try {
             
             // Cerca prenotazioni attive per questo tavolo
             foreach ($bookings as $booking) {
-    if ($booking['tableName'] === $table['name']) {
-        $bookingDateTime = DateTime::createFromFormat('Y-m-d H:i', $booking['data'] . ' ' . $booking['ora']);
-        
-        if ($bookingDateTime) {
-            $isForToday = $bookingDateTime->format('Y-m-d') === $currentDateTime->format('Y-m-d');
-            $hoursUntilBooking = ($bookingDateTime->getTimestamp() - $currentDateTime->getTimestamp()) / 3600;
-            error_log("Tavolo: {$table['name']}, Ore mancanti: $hoursUntilBooking, Status attuale: {$table['currentStatus']}, Nuovo status: $newStatus");
-            if ($isForToday && $hoursUntilBooking <= 2 && $hoursUntilBooking >= -1) {
-                // Se è per oggi e mancano meno di 2 ore (o è già iniziata da meno di 1 ora)
-                $newStatus = 'occupato';
-                break; // IMPORTANTE: esci dal loop, questo ha priorità
-            } elseif ($bookingDateTime > $currentDateTime && $hoursUntilBooking > 2) {
-    $newStatus = 'prenotato';
-                // Non fare break qui perché potrebbe esserci una prenotazione più vicina
-            }
-        }
-    }
-}
-            
-            // Aggiorna lo status se è cambiato
-            if ($table['currentStatus'] !== $newStatus) {
-                $table['currentStatus'] = $newStatus;
-                $updatedTables++;
-                
-                // Aggiungi entry nello storico
-                if (!isset($table['history'])) {
-                    $table['history'] = [];
+                if ($booking['tableName'] === $table['name']) {
+                    $bookingDateTime = DateTime::createFromFormat('Y-m-d H:i', $booking['data'] . ' ' . $booking['ora']);
+                    
+                    if ($bookingDateTime) {
+                        // Usa la durata per calcolare l'orario di fine
+                        $duration = isset($booking['durata']) ? (int)$booking['durata'] : 2;
+                        $bookingEndDateTime = clone $bookingDateTime;
+                        $bookingEndDateTime->modify("+{$duration} hours");
+                        
+                        // Se la prenotazione è già scaduta, saltala
+                        if ($bookingEndDateTime < $currentDateTime) {
+                            continue;
+                        }
+                        
+                        $isForToday = $bookingDateTime->format('Y-m-d') === $currentDateTime->format('Y-m-d');
+                        $hoursUntilBooking = ($bookingDateTime->getTimestamp() - $currentDateTime->getTimestamp()) / 3600;
+                        error_log("Tavolo: {$table['name']}, Ore mancanti: $hoursUntilBooking, Status attuale: {$table['currentStatus']}, Nuovo status: $newStatus");
+                        
+                        if ($isForToday && $hoursUntilBooking <= 2 && $hoursUntilBooking >= -1) {
+                            // Se è per oggi e mancano meno di 2 ore (o è già iniziata da meno di 1 ora)
+                            $newStatus = 'occupato';
+                            break; // IMPORTANTE: esci dal loop, questo ha priorità
+                        } elseif ($bookingDateTime > $currentDateTime && $hoursUntilBooking > 2) {
+                            $newStatus = 'prenotato';
+                            // Non fare break qui perché potrebbe esserci una prenotazione più vicina
+                        }
+                    }
                 }
-                $table['history'][] = [
-                    'type' => 'aggiornamento_automatico',
-                    'old_status' => $oldStatus,
-                    'new_status' => $newStatus,
-                    'timestamp' => $currentDateTime->format('c')
-                ];
+            }
+            
+            // Aggiorna lo status se è cambiato e la transizione è valida
+            if ($table['currentStatus'] !== $newStatus) {
+                // Valida la transizione di stato
+                if (isValidStatusTransition($oldStatus, $newStatus)) {
+                    $table['currentStatus'] = $newStatus;
+                    $updatedTables++;
+                    
+                    // Aggiungi entry nello storico
+                    if (!isset($table['history'])) {
+                        $table['history'] = [];
+                    }
+                    $table['history'][] = [
+                        'type' => 'aggiornamento_automatico',
+                        'old_status' => $oldStatus,
+                        'new_status' => $newStatus,
+                        'timestamp' => $currentDateTime->format('c')
+                    ];
+                } else {
+                    // Log della transizione non valida (non blocca il processo)
+                    error_log("Transizione di stato non valida per tavolo {$table['name']}: $oldStatus → $newStatus");
+                }
             }
         }
     }

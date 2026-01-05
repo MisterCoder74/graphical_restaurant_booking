@@ -1,0 +1,23 @@
+# Backup files
+*.backup
+*.bak
+*~
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Log files
+*.log
+error_log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Environment files
+.env
+.env.local
