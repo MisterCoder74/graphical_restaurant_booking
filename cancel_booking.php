@@ -46,6 +46,7 @@ try {
     
     // Trova la prenotazione da cancellare
     $found = false;
+    $cancelledTableName = null;
     for ($i = 0; $i < count($bookings); $i++) {
         // Gestisci sia ID espliciti che generati dal frontend
         $currentId = isset($bookings[$i]['id']) ? $bookings[$i]['id'] : "booking_" . time() . "_" . $i;
@@ -56,6 +57,7 @@ try {
             $bookings[$i]['status'] = 'cancellata';
             $bookings[$i]['cancelled_at'] = date('Y-m-d H:i:s');
             $bookings[$i]['id'] = $currentId; // Assicura che l'ID sia presente
+            $cancelledTableName = $bookings[$i]['tableName'];
             $found = true;
             break;
         }
@@ -70,6 +72,62 @@ try {
     
     if ($result === false) {
         throw new Exception('Impossibile salvare il file prenotazioni');
+    }
+    
+    // Aggiorna lo stato del tavolo in tables_conf.json
+    $tablesFile = 'tables_conf.json';
+    if (file_exists($tablesFile) && $cancelledTableName) {
+        $tablesContent = file_get_contents($tablesFile);
+        if ($tablesContent !== false) {
+            $tablesData = json_decode($tablesContent, true);
+            if ($tablesData !== null && isset($tablesData['tables'])) {
+                // Ricalcola lo stato del tavolo basandosi sulle prenotazioni attive rimanenti
+                $hasActiveBooking = false;
+                $currentDateTime = new DateTime();
+                
+                foreach ($bookings as $booking) {
+                    if ($booking['tableName'] === $cancelledTableName && 
+                        $booking['status'] === 'attiva') {
+                        $bookingDateTime = DateTime::createFromFormat('Y-m-d H:i', $booking['data'] . ' ' . $booking['ora']);
+                        if ($bookingDateTime) {
+                            $duration = isset($booking['durata']) ? (int)$booking['durata'] : 2;
+                            $bookingEndDateTime = clone $bookingDateTime;
+                            $bookingEndDateTime->modify("+{$duration} hours");
+                            
+                            // Se c'è una prenotazione attiva non scaduta, mantieni lo stato
+                            if ($bookingEndDateTime > $currentDateTime) {
+                                $hasActiveBooking = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                // Aggiorna il tavolo
+                foreach ($tablesData['tables'] as &$table) {
+                    if ($table['name'] === $cancelledTableName) {
+                        if (!$hasActiveBooking) {
+                            $oldStatus = $table['currentStatus'];
+                            $table['currentStatus'] = 'disponibile';
+                            
+                            if (!isset($table['history'])) {
+                                $table['history'] = [];
+                            }
+                            $table['history'][] = [
+                                'type' => 'cancellazione_prenotazione',
+                                'old_status' => $oldStatus,
+                                'new_status' => 'disponibile',
+                                'timestamp' => date('c')
+                            ];
+                        }
+                        break;
+                    }
+                }
+                
+                // Salva il file aggiornato
+                file_put_contents($tablesFile, json_encode($tablesData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+            }
+        }
     }
     
     // Risposta di successo
