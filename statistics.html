@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statistiche - Sistema Gestione Ristorante</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .stats-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease;
+            height: 100%;
+        }
+        
+        .stats-card:hover {
+            transform: translateY(-2px);
+        }
+        
+        .stats-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .stats-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stats-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            background: white;
+            border-radius: 12px;
+            padding: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .chart-container canvas {
+            max-height: 250px !important;
+        }
+        
+        .progress-section {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+        
+        .utilization-bar {
+            height: 30px;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .utilization-progress {
+            height: 100%;
+            border-radius: 15px;
+            transition: width 0.5s ease;
+        }
+        
+        .utilization-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        
+        .rate-excellent { background: linear-gradient(90deg, #28a745, #20c997); }
+        .rate-good { background: linear-gradient(90deg, #17a2b8, #6f42c1); }
+        .rate-average { background: linear-gradient(90deg, #ffc107, #fd7e14); }
+        .rate-poor { background: linear-gradient(90deg, #dc3545, #e83e8c); }
+        
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .metric-item {
+            text-align: center;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #495057;
+        }
+        
+        .metric-description {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-top: 0.25rem;
+        }
+        
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+        }
+        
+        .no-data {
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+            padding: 2rem;
+        }
+        
+        .header-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .refresh-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        
+        .table-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .table-list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .table-list-item:last-child {
+            border-bottom: none;
+        }
+        
+        .percentage-circle {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid mt-4">
+        <!-- Header -->
+        <div class="header-section">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="mb-2">
+                        <i class="bi bi-bar-chart"></i>
+                        Dashboard Statistiche
+                    </h1>
+                    <p class="mb-0 opacity-75">
+                        Analisi dettagliata delle performance del ristorante
+                    </p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="d-flex flex-column align-items-end">
+                        <small class="opacity-75">Ultimo aggiornamento</small>
+                        <div id="lastUpdateTime" class="fw-bold"></div>
+                        <a href="graphical_reservation.html" class="btn btn-light btn-sm mt-2">
+                            <i class="bi bi-arrow-left"></i> Torna al Grafico
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Summary Cards -->
+        <div class="row mb-4" id="summaryCards">
+            <div class="col-md-3">
+                <div class="stats-card text-center">
+                    <div class="stats-icon text-primary">
+                        <i class="bi bi-percent"></i>
+                    </div>
+                    <div class="stats-number" id="overallUtilization">0%</div>
+                    <div class="stats-label">Utilizzo Generale</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card text-center">
+                    <div class="stats-icon text-success">
+                        <i class="bi bi-check-circle"></i>
+                    </div>
+                    <div class="stats-number" id="completionRate">0%</div>
+                    <div class="stats-label">Tasso Completamento</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card text-center">
+                    <div class="stats-icon text-info">
+                        <i class="bi bi-people"></i>
+                    </div>
+                    <div class="stats-number" id="totalGuests">0</div>
+                    <div class="stats-label">Ospiti Serviti (7gg)</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card text-center">
+                    <div class="stats-icon text-warning">
+                        <i class="bi bi-clock"></i>
+                    </div>
+                    <div class="stats-number" id="averagePartySize">0</div>
+                    <div class="stats-label">Media Ospiti/Prenotazione</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Utilization Rates -->
+        <div class="row mb-4">
+            <div class="col-lg-8">
+                <div class="progress-section">
+                    <h5 class="mb-3">
+                        <i class="bi bi-bar-chart"></i>
+                        Utilizzo Tavoli (Ultimi 7 giorni)
+                    </h5>
+                    <div id="overallUtilizationBar" class="mb-3">
+                        <div class="utilization-label">
+                            <span>Utilizzo Generale</span>
+                            <span class="fw-bold" id="overallUtilizationValue">0%</span>
+                        </div>
+                        <div class="utilization-bar">
+                            <div class="utilization-progress rate-poor" id="overallUtilizationProgress" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div id="perTableUtilization" class="mt-4">
+                        <h6>Utilizzo per Tavolo</h6>
+                        <div class="table-list" id="tableUtilizationList">
+                            <!-- Table utilization bars will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="chart-container">
+                    <h6 class="text-center mb-3">Distribuzione Status</h6>
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Busiest Hours -->
+        <div class="row mb-4">
+            <div class="col-lg-8">
+                <div class="chart-container">
+                    <h5 class="text-center mb-3">
+                        <i class="bi bi-clock-history"></i>
+                        Ore di Maggior Affluenza (Ultimi 7 giorni)
+                    </h5>
+                    <canvas id="busiestHoursChart"></canvas>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="progress-section">
+                    <h6 class="mb-3">Top 5 Ore di Punta</h6>
+                    <div id="topBusiestHours">
+                        <!-- Top hours will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Completion Rates -->
+        <div class="row mb-4">
+            <div class="col-lg-6">
+                <div class="chart-container">
+                    <h5 class="text-center mb-3">
+                        <i class="bi bi-pie-chart"></i>
+                        Tasso di Completamento Prenotazioni (30 giorni)
+                    </h5>
+                    <canvas id="completionChart"></canvas>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="progress-section">
+                    <h6 class="mb-3">Dettaglio Completamento</h6>
+                    <div class="metric-grid">
+                        <div class="metric-item">
+                            <div class="percentage-circle bg-success" id="completedPercentage">0%</div>
+                            <div class="metric-description">Completate</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="percentage-circle bg-danger" id="cancelledPercentage">0%</div>
+                            <div class="metric-description">Cancellate</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="percentage-circle bg-warning" id="noShowPercentage">0%</div>
+                            <div class="metric-description">Non Presentate</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="percentage-circle bg-info" id="upcomingPercentage">0%</div>
+                            <div class="metric-description">In Attesa</div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <strong>Totale prenotazioni analizzate:</strong> <span id="totalAnalyzedReservations">0</span>
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Additional Metrics -->
+        <div class="row mb-4">
+            <div class="col-lg-12">
+                <div class="stats-card">
+                    <h5 class="mb-3">
+                        <i class="bi bi-calendar3"></i>
+                        Metriche Aggiuntive (Ultimi 7 giorni)
+                    </h5>
+                    <div class="row">
+                        <div class="col-md-3 text-center">
+                            <div class="metric-value text-primary" id="peakDayBookings">0</div>
+                            <div class="metric-description">Prenotazioni nel giorno di punta</div>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <div class="metric-value text-success" id="peakDayName">-</div>
+                            <div class="metric-description">Giorno di punta della settimana</div>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <div class="metric-value text-info" id="averageDuration">0 min</div>
+                            <div class="metric-description">Durata media prenotazioni</div>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <div class="metric-value text-warning" id="tablesUtilized">0</div>
+                            <div class="metric-description">Tavoli utilizzati</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Data Quality Section -->
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="alert alert-info">
+                    <h6><i class="bi bi-info-circle"></i> Informazioni sui Dati</h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <small><strong>Periodo analisi utilizzo:</strong> Ultimi 7 giorni</small>
+                        </div>
+                        <div class="col-md-4">
+                            <small><strong>Periodo analisi completamento:</strong> Ultimi 30 giorni</small>
+                        </div>
+                        <div class="col-md-4">
+                            <small><strong>Aggiornamento automatico:</strong> Ogni 5 minuti</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Refresh Button -->
+    <button class="btn btn-primary refresh-btn" onclick="refreshStatistics()" title="Aggiorna Statistiche">
+        <i class="bi bi-arrow-clockwise"></i>
+    </button>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Global variables
+        let statisticsData = null;
+        let charts = {};
+        let updateInterval;
+        
+        // Chart colors
+        const chartColors = {
+            primary: '#0d6efd',
+            success: '#198754',
+            danger: '#dc3545',
+            warning: '#ffc107',
+            info: '#0dcaf0',
+            secondary: '#6c757d',
+            light: '#f8f9fa',
+            dark: '#212529'
+        };
+        
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStatistics();
+            setupAutoUpdate();
+        });
+        
+        async function loadStatistics() {
+            showLoading();
+            
+            try {
+                const response = await fetch('./php/api_statistics.php?v=' + Date.now());
+                const result = await response.json();
+                
+                if (result.success) {
+                    statisticsData = result.data;
+                    displayStatistics();
+                    createCharts();
+                    updateLastUpdateTime();
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                showError('Errore nel caricamento delle statistiche: ' + error.message);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        function displayStatistics() {
+            if (!statisticsData) return;
+            
+            // Summary cards
+            document.getElementById('overallUtilization').textContent = 
+                statisticsData.utilizationRate.overall + '%';
+            document.getElementById('completionRate').textContent = 
+                statisticsData.completionRates.completed + '%';
+            document.getElementById('totalGuests').textContent = 
+                statisticsData.additionalMetrics.totalGuests;
+            document.getElementById('averagePartySize').textContent = 
+                statisticsData.additionalMetrics.averagePartySize;
+            
+            // Overall utilization bar
+            const utilization = statisticsData.utilizationRate.overall;
+            const utilizationBar = document.getElementById('overallUtilizationProgress');
+            const utilizationValue = document.getElementById('overallUtilizationValue');
+            
+            utilizationBar.style.width = utilization + '%';
+            utilizationValue.textContent = utilization + '%';
+            
+            // Set color based on utilization rate
+            if (utilization >= 70) {
+                utilizationBar.className = 'utilization-progress rate-excellent';
+            } else if (utilization >= 50) {
+                utilizationBar.className = 'utilization-progress rate-good';
+            } else if (utilization >= 30) {
+                utilizationBar.className = 'utilization-progress rate-average';
+            } else {
+                utilizationBar.className = 'utilization-progress rate-poor';
+            }
+            
+            // Table utilization list
+            displayTableUtilization();
+            
+            // Top busiest hours
+            displayTopBusiestHours();
+            
+            // Completion percentages
+            displayCompletionRates();
+            
+            // Additional metrics
+            displayAdditionalMetrics();
+        }
+        
+        function displayTableUtilization() {
+            const container = document.getElementById('tableUtilizationList');
+            container.innerHTML = '';
+            
+            const perTableData = statisticsData.utilizationRate.perTable;
+            
+            if (Object.keys(perTableData).length === 0) {
+                container.innerHTML = '<div class="no-data">Nessun dato disponibile</div>';
+                return;
+            }
+            
+            Object.entries(perTableData).forEach(([tableId, utilization]) => {
+                const item = document.createElement('div');
+                item.className = 'table-list-item';
+                
+                const percentage = Math.round(utilization);
+                let rateClass = 'rate-poor';
+                
+                if (percentage >= 70) {
+                    rateClass = 'rate-excellent';
+                } else if (percentage >= 50) {
+                    rateClass = 'rate-good';
+                } else if (percentage >= 30) {
+                    rateClass = 'rate-average';
+                }
+                
+                item.innerHTML = `
+                    <div>
+                        <strong>Tavolo ${tableId}</strong>
+                    </div>
+                    <div style="flex: 1; margin: 0 1rem;">
+                        <div class="utilization-bar" style="height: 20px;">
+                            <div class="utilization-progress ${rateClass}" style="width: ${percentage}%"></div>
+                        </div>
+                    </div>
+                    <div class="fw-bold">${percentage}%</div>
+                `;
+                
+                container.appendChild(item);
+            });
+        }
+        
+        function displayTopBusiestHours() {
+            const container = document.getElementById('topBusiestHours');
+            container.innerHTML = '';
+            
+            const topHours = statisticsData.busiestHours.slice(0, 5);
+            
+            if (topHours.length === 0) {
+                container.innerHTML = '<div class="no-data">Nessun dato disponibile</div>';
+                return;
+            }
+            
+            topHours.forEach((hour, index) => {
+                const hourItem = document.createElement('div');
+                hourItem.className = 'd-flex justify-content-between align-items-center mb-2';
+                
+                hourItem.innerHTML = `
+                    <div class="d-flex align-items-center">
+                        <span class="badge bg-${index === 0 ? 'warning' : index === 1 ? 'secondary' : 'light text-dark'} me-2">
+                            ${index + 1}
+                        </span>
+                        <span class="fw-bold">${hour.hour}</span>
+                    </div>
+                    <div>
+                        <span class="badge bg-primary">${hour.bookings}</span>
+                        <small class="text-muted ms-1">(${hour.percentage}%)</small>
+                    </div>
+                `;
+                
+                container.appendChild(hourItem);
+            });
+        }
+        
+        function displayCompletionRates() {
+            const rates = statisticsData.completionRates;
+            
+            document.getElementById('completedPercentage').textContent = rates.completed + '%';
+            document.getElementById('cancelledPercentage').textContent = rates.cancelled + '%';
+            document.getElementById('noShowPercentage').textContent = rates.noShow + '%';
+            
+            // Calculate upcoming percentage
+            const upcomingPercentage = 100 - rates.completed - rates.cancelled - rates.noShow;
+            document.getElementById('upcomingPercentage').textContent = Math.max(0, upcomingPercentage) + '%';
+            
+            document.getElementById('totalAnalyzedReservations').textContent = rates.total;
+        }
+        
+        function displayAdditionalMetrics() {
+            const metrics = statisticsData.additionalMetrics;
+            
+            document.getElementById('peakDayBookings').textContent = metrics.peakDayBookings;
+            document.getElementById('peakDayName').textContent = metrics.peakDay || '-';
+            document.getElementById('averageDuration').textContent = 
+                calculateAverageDuration() + ' min';
+            document.getElementById('tablesUtilized').textContent = 
+                Object.keys(statisticsData.utilizationRate.perTable).length;
+        }
+        
+        function calculateAverageDuration() {
+            // This would need to be calculated from reservation data
+            // For now, return a placeholder
+            return 120; // 2 hours
+        }
+        
+        function createCharts() {
+            createStatusChart();
+            createBusiestHoursChart();
+            createCompletionChart();
+        }
+        
+        function createStatusChart() {
+            const ctx = document.getElementById('statusChart').getContext('2d');
+            
+            const rates = statisticsData.completionRates;
+            const upcomingPercentage = Math.max(0, 100 - rates.completed - rates.cancelled - rates.noShow);
+            
+            charts.statusChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Completate', 'Cancellate', 'Non Presentate', 'In Attesa'],
+                    datasets: [{
+                        data: [
+                            rates.completed,
+                            rates.cancelled,
+                            rates.noShow,
+                            upcomingPercentage
+                        ],
+                        backgroundColor: [
+                            chartColors.success,
+                            chartColors.danger,
+                            chartColors.warning,
+                            chartColors.info
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+        
+        function createBusiestHoursChart() {
+            const ctx = document.getElementById('busiestHoursChart').getContext('2d');
+            
+            const hours = statisticsData.busiestHours.map(h => h.hour);
+            const bookings = statisticsData.busiestHours.map(h => h.bookings);
+            
+            charts.busiestHoursChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: hours,
+                    datasets: [{
+                        label: 'Numero Prenotazioni',
+                        data: bookings,
+                        backgroundColor: chartColors.primary,
+                        borderColor: chartColors.primary,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+        
+        function createCompletionChart() {
+            const ctx = document.getElementById('completionChart').getContext('2d');
+            
+            const rates = statisticsData.completionRates;
+            const upcomingPercentage = Math.max(0, 100 - rates.completed - rates.cancelled - rates.noShow);
+            
+            charts.completionChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Completate', 'Cancellate', 'Non Presentate', 'In Attesa'],
+                    datasets: [{
+                        data: [
+                            rates.completed,
+                            rates.cancelled,
+                            rates.noShow,
+                            upcomingPercentage
+                        ],
+                        backgroundColor: [
+                            chartColors.success,
+                            chartColors.danger,
+                            chartColors.warning,
+                            chartColors.info
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+        
+        function showLoading() {
+            const cards = document.querySelectorAll('.stats-card');
+            cards.forEach(card => {
+                card.innerHTML = '<div class="loading-spinner"><div class="spinner-border text-primary"></div></div>';
+            });
+        }
+        
+        function hideLoading() {
+            loadStatistics(); // This will be called again to populate the data
+        }
+        
+        function showError(message) {
+            const cards = document.querySelectorAll('.stats-card');
+            cards.forEach(card => {
+                card.innerHTML = `<div class="no-data">${message}</div>`;
+            });
+        }
+        
+        function updateLastUpdateTime() {
+            const now = new Date();
+            document.getElementById('lastUpdateTime').textContent = 
+                now.toLocaleString('it-IT');
+        }
+        
+        async function refreshStatistics() {
+            // Destroy existing charts
+            Object.values(charts).forEach(chart => {
+                if (chart) chart.destroy();
+            });
+            charts = {};
+            
+            await loadStatistics();
+            
+            // Show success notification
+            showNotification('Statistiche aggiornate', 'success');
+        }
+        
+        function setupAutoUpdate() {
+            updateInterval = setInterval(() => {
+                refreshStatistics();
+            }, 300000); // Update every 5 minutes
+        }
+        
+        function showNotification(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `alert alert-${type} position-fixed`;
+            toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            toast.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+            `;
+            
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.remove();
+                }
+            }, 3000);
+        }
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+            
+            // Destroy charts
+            Object.values(charts).forEach(chart => {
+                if (chart) chart.destroy();
+            });
+        });
+    </script>
+</body>
+</html>
