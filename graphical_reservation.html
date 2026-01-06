@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prenotazioni Grafiche - Sistema Gestione Ristorante</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .canvas-container {
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            background-color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #floorCanvas {
+            cursor: crosshair;
+            display: block;
+            background-image: 
+                linear-gradient(to right, #f0f0f0 1px, transparent 1px),
+                linear-gradient(to bottom, #f0f0f0 1px, transparent 1px);
+            background-size: 10px 10px;
+        }
+        
+        .table-item {
+            cursor: move;
+            border: 2px solid #495057;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            position: absolute;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 12px;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        
+        .table-item:hover {
+            border-color: #0d6efd;
+            box-shadow: 0 0 8px rgba(13, 110, 253, 0.5);
+        }
+        
+        .table-available { background-color: #28a745; }
+        .table-booked { background-color: #ffc107; }
+        .table-occupied { background-color: #dc3545; }
+        
+        .sidebar {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .status-badge {
+            font-size: 0.8em;
+        }
+        
+        .modal-content {
+            border-radius: 8px;
+        }
+        
+        .btn-table-action {
+            margin: 2px;
+            font-size: 0.85em;
+        }
+        
+        .time-picker-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .time-slot {
+            padding: 5px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            text-align: center;
+            cursor: pointer;
+            background: white;
+        }
+        
+        .time-slot:hover {
+            background-color: #e9ecef;
+        }
+        
+        .time-slot.selected {
+            background-color: #0d6efd;
+            color: white;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            max-width: 300px;
+        }
+        
+        .grid-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .canvas-wrapper {
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <!-- Canvas Section -->
+            <div class="col-lg-9">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">
+                            <i class="bi bi-grid-3x3"></i> Planimetria Ristorante
+                        </h4>
+                        <div>
+                            <button class="btn btn-primary btn-sm" onclick="openAddTableModal()">
+                                <i class="bi bi-plus-circle"></i> Aggiungi Tavolo
+                            </button>
+                            <button class="btn btn-success btn-sm" onclick="saveLayout()">
+                                <i class="bi bi-save"></i> Salva Layout
+                            </button>
+                            <button class="btn btn-info btn-sm" onclick="loadLayout()">
+                                <i class="bi bi-upload"></i> Carica Layout
+                            </button>
+                            <button class="btn btn-warning btn-sm" onclick="clearLayout()">
+                                <i class="bi bi-trash"></i> Pulisci
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="canvas-container">
+                            <canvas id="floorCanvas" width="800" height="600"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sidebar -->
+            <div class="col-lg-3">
+                <div class="sidebar p-3">
+                    <h5 class="mb-3">
+                        <i class="bi bi-gear"></i> Gestione Layout
+                    </h5>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Canvas Size:</label>
+                        <div class="row">
+                            <div class="col-6">
+                                <input type="number" id="canvasWidth" class="form-control form-control-sm" 
+                                       value="800" placeholder="Width">
+                            </div>
+                            <div class="col-6">
+                                <input type="number" id="canvasHeight" class="form-control form-control-sm" 
+                                       value="600" placeholder="Height">
+                            </div>
+                        </div>
+                        <button class="btn btn-outline-primary btn-sm mt-2 w-100" onclick="resizeCanvas()">
+                            Ridimensiona Canvas
+                        </button>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="mb-3">
+                        <h6>Stato Tavoli</h6>
+                        <div class="d-flex flex-wrap gap-2">
+                            <span class="badge bg-success">Disponibile</span>
+                            <span class="badge bg-warning">Prenotato</span>
+                            <span class="badge bg-danger">Occupato</span>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="mb-3">
+                        <h6>Ultimo Salvataggio:</h6>
+                        <small id="lastSaved" class="text-muted">Mai salvato</small>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <small>
+                            <i class="bi bi-info-circle"></i>
+                            Trascina i tavoli per riposizionarli. Clicca su un tavolo per vedere i dettagli.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add Table Modal -->
+    <div class="modal fade" id="addTableModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Aggiungi Nuovo Tavolo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addTableForm">
+                        <div class="mb-3">
+                            <label class="form-label">Numero di Posti:</label>
+                            <input type="number" class="form-control" id="tableSeats" min="1" max="12" value="4" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Orientamento:</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="orientation" id="horizontal" value="horizontal" checked>
+                                <label class="form-check-label" for="horizontal">
+                                    Orizzontale
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="orientation" id="vertical" value="vertical">
+                                <label class="form-check-label" for="vertical">
+                                    Verticale
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Posizione:</label>
+                            <p class="text-muted small">Clicca sul canvas per posizionare il tavolo</p>
+                            <div id="positionDisplay" class="text-info">Posizione: Non selezionata</div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="button" class="btn btn-primary" onclick="addTable()">Aggiungi Tavolo</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Table Details Modal -->
+    <div class="modal fade" id="tableDetailsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Dettagli Tavolo <span id="detailTableId"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Informazioni Tavolo</h6>
+                            <p><strong>ID:</strong> <span id="detailTableIdText"></span></p>
+                            <p><strong>Posti:</strong> <span id="detailSeats"></span></p>
+                            <p><strong>Orientamento:</strong> <span id="detailOrientation"></span></p>
+                            <p><strong>Stato:</strong> <span id="detailStatus" class="badge"></span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Azioni Rapide</h6>
+                            <button class="btn btn-primary btn-table-action w-100 mb-2" onclick="openBookingModal()">
+                                <i class="bi bi-calendar-plus"></i> Crea Prenotazione
+                            </button>
+                            <button class="btn btn-warning btn-table-action w-100 mb-2" onclick="cancelCurrentBooking()">
+                                <i class="bi bi-x-circle"></i> Cancella Prenotazione Attuale
+                            </button>
+                            <button class="btn btn-info btn-table-action w-100 mb-2" onclick="toggleReservationsHistory()">
+                                <i class="bi bi-clock-history"></i> Mostra/Nascondi Storico
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <h6>Ultime Prenotazioni</h6>
+                    <div id="recentReservations">
+                        <p class="text-muted">Nessuna prenotazione trovata.</p>
+                    </div>
+                    
+                    <div id="reservationsHistory" style="display: none;">
+                        <h6>Storico Completo</h6>
+                        <div id="fullReservationsList"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Booking Modal -->
+    <div class="modal fade" id="bookingModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nuova Prenotazione - Tavolo <span id="bookingTableId"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="bookingForm">
+                        <div class="mb-3">
+                            <label class="form-label">Nome Ospite:</label>
+                            <input type="text" class="form-control" id="guestName" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Numero di Ospiti:</label>
+                            <input type="number" class="form-control" id="numberOfGuests" min="1" max="12" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Data:</label>
+                            <input type="date" class="form-control" id="bookingDate" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Orario di Inizio:</label>
+                            <div class="time-picker-grid" id="timePicker"></div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Durata:</label>
+                            <select class="form-control" id="duration" required>
+                                <option value="30">30 minuti</option>
+                                <option value="60">1 ora</option>
+                                <option value="90">1.5 ore</option>
+                                <option value="120" selected>2 ore</option>
+                                <option value="150">2.5 ore</option>
+                                <option value="180">3 ore</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="button" class="btn btn-primary" onclick="createBooking()">Crea Prenotazione</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Clear Layout Confirmation Modal -->
+    <div class="modal fade" id="clearLayoutModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Conferma Cancellazione</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Sei sicuro di voler cancellare tutto il layout? Questa azione non può essere annullata.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="button" class="btn btn-danger" onclick="confirmClearLayout()">Cancella Tutto</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Notifications -->
+    <div id="notificationContainer"></div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Global variables
+        let canvas = null;
+        let ctx = null;
+        let tables = [];
+        let draggedTable = null;
+        let dragOffset = {x: 0, y: 0};
+        let selectedTableForBooking = null;
+        let isAddingTable = false;
+        let tablePosition = {x: 0, y: 0};
+        let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        let statusUpdateInterval;
+        
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            canvas = document.getElementById('floorCanvas');
+            ctx = canvas.getContext('2d');
+            
+            setupCanvasEvents();
+            generateTimeSlots();
+            loadLayout();
+            startStatusUpdates();
+            
+            // Set minimum date to today
+            document.getElementById('bookingDate').min = new Date().toISOString().split('T')[0];
+        });
+        
+        function setupCanvasEvents() {
+            canvas.addEventListener('click', handleCanvasClick);
+            canvas.addEventListener('mousedown', handleMouseDown);
+            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('mouseup', handleMouseUp);
+            canvas.addEventListener('contextmenu', handleRightClick);
+        }
+        
+        function handleCanvasClick(event) {
+            if (isAddingTable) {
+                const rect = canvas.getBoundingClientRect();
+                tablePosition.x = Math.round(event.clientX - rect.left);
+                tablePosition.y = Math.round(event.clientY - rect.top);
+                
+                document.getElementById('positionDisplay').textContent = 
+                    `Posizione: (${tablePosition.x}, ${tablePosition.y})`;
+            }
+        }
+        
+        function handleMouseDown(event) {
+            if (isAddingTable) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            
+            // Check if clicking on a table
+            for (let table of tables) {
+                if (x >= table.x && x <= table.x + table.width && 
+                    y >= table.y && y <= table.y + table.height) {
+                    draggedTable = table;
+                    dragOffset.x = x - table.x;
+                    dragOffset.y = y - table.y;
+                    break;
+                }
+            }
+        }
+        
+        function handleMouseMove(event) {
+            if (draggedTable) {
+                const rect = canvas.getBoundingClientRect();
+                const x = event.clientX - rect.left - dragOffset.x;
+                const y = event.clientY - rect.top - dragOffset.y;
+                
+                // Snap to grid
+                draggedTable.x = Math.round(x / 10) * 10;
+                draggedTable.y = Math.round(y / 10) * 10;
+                
+                redrawCanvas();
+            }
+        }
+        
+        function handleMouseUp(event) {
+            draggedTable = null;
+        }
+        
+        function handleRightClick(event) {
+            event.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            
+            // Check if right-clicking on a table
+            for (let table of tables) {
+                if (x >= table.x && x <= table.x + table.width && 
+                    y >= table.y && y <= table.y + table.height) {
+                    
+                    if (confirm(`Sei sicuro di voler eliminare il tavolo ${table.id}?`)) {
+                        tables = tables.filter(t => t.id !== table.id);
+                        redrawCanvas();
+                    }
+                    break;
+                }
+            }
+        }
+        
+        function openAddTableModal() {
+            isAddingTable = true;
+            tablePosition = {x: 0, y: 0};
+            document.getElementById('positionDisplay').textContent = 'Posizione: Non selezionata';
+            document.getElementById('addTableModal').querySelector('.modal-title').textContent = 'Aggiungi Nuovo Tavolo';
+            new bootstrap.Modal(document.getElementById('addTableModal')).show();
+        }
+        
+        function addTable() {
+            if (tablePosition.x === 0 && tablePosition.y === 0) {
+                showNotification('Seleziona una posizione sul canvas', 'warning');
+                return;
+            }
+            
+            const seats = parseInt(document.getElementById('tableSeats').value);
+            const orientation = document.querySelector('input[name="orientation"]:checked').value;
+            
+            // Calculate table dimensions
+            let width, height;
+            if (orientation === 'horizontal') {
+                width = seats * 20;
+                height = 40;
+            } else {
+                width = 40;
+                height = seats * 20;
+            }
+            
+            // Generate next table ID
+            const nextId = tables.length > 0 ? Math.max(...tables.map(t => t.id)) + 1 : 1;
+            
+            const newTable = {
+                id: nextId,
+                seats: seats,
+                orientation: orientation,
+                x: tablePosition.x,
+                y: tablePosition.y,
+                width: width,
+                height: height,
+                currentStatus: 'available'
+            };
+            
+            tables.push(newTable);
+            isAddingTable = false;
+            bootstrap.Modal.getInstance(document.getElementById('addTableModal')).hide();
+            redrawCanvas();
+            
+            showNotification(`Tavolo ${nextId} aggiunto con successo`, 'success');
+        }
+        
+        function redrawCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw tables
+            tables.forEach(table => {
+                drawTable(table);
+            });
+        }
+        
+        function drawTable(table) {
+            const statusColor = getTableStatusColor(table);
+            
+            ctx.fillStyle = statusColor;
+            ctx.fillRect(table.x, table.y, table.width, table.height);
+            
+            ctx.strokeStyle = '#495057';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(table.x, table.y, table.width, table.height);
+            
+            // Draw table ID
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(
+                `T${table.id}\n(${table.seats} posti)`,
+                table.x + table.width / 2,
+                table.y + table.height / 2
+            );
+        }
+        
+        function getTableStatusColor(table) {
+            // Get current status based on reservations
+            const currentTime = new Date();
+            const currentDate = currentTime.toISOString().split('T')[0];
+            const currentHour = currentTime.getHours();
+            const currentMinute = currentTime.getMinutes();
+            
+            // This would need to be implemented with real reservation data
+            // For now, return based on a simple heuristic
+            if (Math.random() > 0.7) {
+                return '#ffc107'; // Yellow - booked
+            } else if (Math.random() > 0.9) {
+                return '#dc3545'; // Red - occupied
+            }
+            return '#28a745'; // Green - available
+        }
+        
+        function generateTimeSlots() {
+            const timePicker = document.getElementById('timePicker');
+            timePicker.innerHTML = '';
+            
+            for (let hour = 11; hour <= 23; hour++) {
+                for (let minute of [0, 30]) {
+                    const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+                    const timeSlot = document.createElement('div');
+                    timeSlot.className = 'time-slot';
+                    timeSlot.textContent = timeString;
+                    timeSlot.onclick = () => selectTimeSlot(timeSlot);
+                    timePicker.appendChild(timeSlot);
+                }
+            }
+        }
+        
+        function selectTimeSlot(element) {
+            document.querySelectorAll('.time-slot').forEach(slot => {
+                slot.classList.remove('selected');
+            });
+            element.classList.add('selected');
+            element.dataset.selected = 'true';
+        }
+        
+        async function saveLayout() {
+            try {
+                const layoutData = {
+                    tables: tables,
+                    canvasWidth: canvas.width,
+                    canvasHeight: canvas.height
+                };
+                
+                const response = await fetch('./php/api_layout.php?action=save', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(layoutData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification('Layout salvato con successo', 'success');
+                    updateLastSaved();
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                showNotification('Errore nel salvataggio: ' + error.message, 'danger');
+            }
+        }
+        
+        async function loadLayout() {
+            try {
+                const response = await fetch('./php/api_layout.php?action=load&v=' + Date.now());
+                const result = await response.json();
+                
+                if (result.success) {
+                    const data = result.data;
+                    tables = data.tables || [];
+                    canvas.width = data.canvasWidth || 800;
+                    canvas.height = data.canvasHeight || 600;
+                    
+                    document.getElementById('canvasWidth').value = canvas.width;
+                    document.getElementById('canvasHeight').value = canvas.height;
+                    
+                    redrawCanvas();
+                    updateLastSaved(data.savedAt);
+                    showNotification('Layout caricato con successo', 'success');
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                showNotification('Errore nel caricamento: ' + error.message, 'danger');
+            }
+        }
+        
+        function clearLayout() {
+            new bootstrap.Modal(document.getElementById('clearLayoutModal')).show();
+        }
+        
+        async function confirmClearLayout() {
+            try {
+                const response = await fetch('./php/api_layout.php?action=clear', {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    tables = [];
+                    canvas.width = 800;
+                    canvas.height = 600;
+                    redrawCanvas();
+                    updateLastSaved();
+                    bootstrap.Modal.getInstance(document.getElementById('clearLayoutModal')).hide();
+                    showNotification('Layout cancellato con successo', 'success');
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                showNotification('Errore nella cancellazione: ' + error.message, 'danger');
+            }
+        }
+        
+        function resizeCanvas() {
+            const width = parseInt(document.getElementById('canvasWidth').value);
+            const height = parseInt(document.getElementById('canvasHeight').value);
+            
+            if (width > 0 && height > 0) {
+                canvas.width = width;
+                canvas.height = height;
+                redrawCanvas();
+            } else {
+                showNotification('Dimensioni non valide', 'warning');
+            }
+        }
+        
+        function showTableDetails(table) {
+            selectedTableForBooking = table;
+            
+            document.getElementById('detailTableId').textContent = table.id;
+            document.getElementById('detailTableIdText').textContent = table.id;
+            document.getElementById('detailSeats').textContent = table.seats;
+            document.getElementById('detailOrientation').textContent = table.orientation;
+            
+            const statusBadge = document.getElementById('detailStatus');
+            statusBadge.textContent = getTableStatusText(table);
+            statusBadge.className = 'badge ' + getTableStatusBadgeClass(table);
+            
+            loadTableReservations(table.id);
+            
+            new bootstrap.Modal(document.getElementById('tableDetailsModal')).show();
+        }
+        
+        function getTableStatusText(table) {
+            // This would be implemented with real reservation data
+            return 'Disponibile';
+        }
+        
+        function getTableStatusBadgeClass(table) {
+            // This would be implemented with real reservation data
+            return 'bg-success';
+        }
+        
+        async function loadTableReservations(tableId) {
+            try {
+                const response = await fetch(`./php/api_reservations.php?action=list&tableId=${tableId}&v=${Date.now()}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    displayReservations(result.data);
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                showNotification('Errore nel caricamento prenotazioni: ' + error.message, 'danger');
+            }
+        }
+        
+        function displayReservations(reservations) {
+            const recentContainer = document.getElementById('recentReservations');
+            const fullContainer = document.getElementById('fullReservationsList');
+            
+            if (reservations.length === 0) {
+                recentContainer.innerHTML = '<p class="text-muted">Nessuna prenotazione trovata.</p>';
+                fullContainer.innerHTML = '<p class="text-muted">Nessuna prenotazione trovata.</p>';
+                return;
+            }
+            
+            // Show last 3 reservations
+            const recent = reservations.slice(-3);
+            recentContainer.innerHTML = recent.map(reservation => `
+                <div class="border rounded p-2 mb-2">
+                    <strong>${reservation.guestName}</strong><br>
+                    <small>${reservation.date} ${reservation.startTime} - ${reservation.numberOfGuests} ospiti</small><br>
+                    <span class="badge bg-secondary">${reservation.status}</span>
+                </div>
+            `).join('');
+            
+            // Show all reservations
+            fullContainer.innerHTML = reservations.map(reservation => `
+                <div class="border rounded p-2 mb-2">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <strong>${reservation.guestName}</strong><br>
+                            <small>${reservation.date} ${reservation.startTime} - ${reservation.numberOfGuests} ospiti</small>
+                        </div>
+                        <span class="badge bg-secondary">${reservation.status}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function openBookingModal() {
+            if (!selectedTableForBooking) return;
+            
+            document.getElementById('bookingTableId').textContent = selectedTableForBooking.id;
+            document.getElementById('numberOfGuests').max = selectedTableForBooking.seats;
+            document.getElementById('numberOfGuests').value = Math.min(4, selectedTableForBooking.seats);
+            
+            new bootstrap.Modal(document.getElementById('bookingModal')).show();
+        }
+        
+        async function createBooking() {
+            if (!selectedTableForBooking) return;
+            
+            const guestName = document.getElementById('guestName').value.trim();
+            const numberOfGuests = parseInt(document.getElementById('numberOfGuests').value);
+            const date = document.getElementById('bookingDate').value;
+            const selectedTimeSlot = document.querySelector('.time-slot.selected');
+            const duration = parseInt(document.getElementById('duration').value);
+            
+            if (!guestName || !date || !selectedTimeSlot) {
+                showNotification('Compila tutti i campi obbligatori', 'warning');
+                return;
+            }
+            
+            const startTime = selectedTimeSlot.textContent;
+            
+            try {
+                const bookingData = {
+                    tableId: selectedTableForBooking.id,
+                    guestName: guestName,
+                    numberOfGuests: numberOfGuests,
+                    date: date,
+                    startTime: startTime,
+                    duration: duration
+                };
+                
+                const response = await fetch('./php/api_reservations.php?action=create', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(bookingData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification('Prenotazione creata con successo', 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('bookingModal')).hide();
+                    document.getElementById('bookingForm').reset();
+                    document.querySelectorAll('.time-slot').forEach(slot => slot.classList.remove('selected'));
+                    redrawCanvas();
+                } else {
+                    showNotification(result.error, 'danger');
+                }
+            } catch (error) {
+                showNotification('Errore nella creazione prenotazione: ' + error.message, 'danger');
+            }
+        }
+        
+        function toggleReservationsHistory() {
+            const historyDiv = document.getElementById('reservationsHistory');
+            historyDiv.style.display = historyDiv.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        async function cancelCurrentBooking() {
+            if (!selectedTableForBooking) return;
+            
+            if (!confirm('Sei sicuro di voler cancellare la prenotazione corrente?')) {
+                return;
+            }
+            
+            // Implementation would depend on current booking identification
+            showNotification('Funzionalità in sviluppo', 'info');
+        }
+        
+        function showNotification(message, type = 'info') {
+            const container = document.getElementById('notificationContainer');
+            const notificationId = 'notification-' + Date.now();
+            
+            const notification = document.createElement('div');
+            notification.id = notificationId;
+            notification.className = `alert alert-${type} alert-dismissible fade show notification`;
+            notification.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" onclick="document.getElementById('${notificationId}').remove()"></button>
+            `;
+            
+            container.appendChild(notification);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (document.getElementById(notificationId)) {
+                    document.getElementById(notificationId).remove();
+                }
+            }, 5000);
+        }
+        
+        function updateLastSaved(timestamp = null) {
+            const lastSavedElement = document.getElementById('lastSaved');
+            if (timestamp) {
+                const date = new Date(timestamp);
+                lastSavedElement.textContent = date.toLocaleString('it-IT');
+            } else {
+                lastSavedElement.textContent = 'Ora';
+            }
+        }
+        
+        function startStatusUpdates() {
+            statusUpdateInterval = setInterval(() => {
+                redrawCanvas();
+            }, 60000); // Update every minute
+        }
+        
+        // Add click handler to canvas for table details
+        canvas.addEventListener('click', function(event) {
+            if (isAddingTable || draggedTable) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            
+            for (let table of tables) {
+                if (x >= table.x && x <= table.x + table.width && 
+                    y >= table.y && y <= table.y + table.height) {
+                    showTableDetails(table);
+                    break;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
