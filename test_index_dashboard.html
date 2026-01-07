@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test index.php Dashboard Fix</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+        .test-pass {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+        }
+        .test-fail {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+        .stat-display {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+        }
+        .stat-card {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            text-align: center;
+            min-width: 150px;
+        }
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #495057;
+        }
+        .stat-label {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        .log {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        button {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Dashboard NaN Fix</h1>
+    <p>Testing the fix for the NaN error in index.php dashboard statistics</p>
+
+    <div class="test-section">
+        <h2>Dashboard Statistics</h2>
+        <div class="stat-display">
+            <div class="stat-card">
+                <div class="stat-number" id="activeReservations">-</div>
+                <div class="stat-label">Prenotazioni Attive</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="occupiedTables">-</div>
+                <div class="stat-label">Tavoli Occupati</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="todayGuests">-</div>
+                <div class="stat-label">Ospiti Oggi</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalTables">-</div>
+                <div class="stat-label">Tavoli Totali</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Controls</h2>
+        <button onclick="testLoadQuickStats()">Load Statistics</button>
+        <button onclick="clearLogs()">Clear Logs</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="testResults"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Console Log</h2>
+        <div class="log" id="consoleLog"></div>
+    </div>
+
+    <script>
+        // Override console.log to display in our log div
+        const originalLog = console.log;
+        const logDiv = document.getElementById('consoleLog');
+
+        function addLog(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${timestamp}] ${message}<br>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            originalLog(message);
+        }
+
+        console.log = function(...args) {
+            addLog(args.join(' '));
+        };
+
+        function clearLogs() {
+            logDiv.innerHTML = '';
+            document.getElementById('testResults').innerHTML = '';
+        }
+
+        // This is the same function from index.php with logging
+        async function loadQuickStats() {
+            addLog('=== Starting loadQuickStats() ===');
+            // Initialize all stat variables with default values
+            let totalTables = 0;
+            let activeReservations = 0;
+            let todayGuests = 0;
+            let occupiedTables = 0;
+
+            addLog('Initialized stat variables: totalTables=' + totalTables + ', activeReservations=' + activeReservations + ', todayGuests=' + todayGuests + ', occupiedTables=' + occupiedTables);
+
+            try {
+                // Load layout for total tables
+                addLog('Fetching layout data...');
+                const layoutResponse = await fetch('./php/api_layout.php?action=load&v=' + Date.now());
+                addLog('Layout response status: ' + layoutResponse.status);
+                const layoutResult = await layoutResponse.json();
+                addLog('Layout result success: ' + layoutResult.success);
+
+                if (layoutResult.success && layoutResult.data && layoutResult.data.tables) {
+                    totalTables = layoutResult.data.tables.length;
+                    addLog('Total tables found: ' + totalTables);
+                    document.getElementById('totalTables').textContent = totalTables;
+                } else {
+                    addLog('No layout data found, setting totalTables to 0');
+                    document.getElementById('totalTables').textContent = '0';
+                }
+
+                // Load reservations for active stats
+                addLog('Fetching reservations data...');
+                const reservationsResponse = await fetch('./php/api_reservations.php?action=list&v=' + Date.now());
+                addLog('Reservations response status: ' + reservationsResponse.status);
+                const reservationsResult = await reservationsResponse.json();
+                addLog('Reservations result success: ' + reservationsResult.success);
+
+                if (reservationsResult.success && Array.isArray(reservationsResult.data)) {
+                    const reservations = reservationsResult.data || [];
+                    addLog('Total reservations fetched: ' + reservations.length);
+                    const now = new Date();
+                    const today = now.toISOString().split('T')[0];
+                    const currentHour = now.getHours();
+                    const currentMinute = now.getMinutes();
+                    const currentMinutes = currentHour * 60 + currentMinute;
+                    addLog('Current time: ' + today + ' ' + currentHour + ':' + currentMinute + ' (total minutes: ' + currentMinutes + ')');
+
+                    // Active reservations (upcoming or current today)
+                    activeReservations = reservations.filter(r =>
+                        r.status === 'upcoming' ||
+                        (r.date === today && r.status !== 'cancelled')
+                    ).length;
+                    addLog('Active reservations count: ' + activeReservations);
+
+                    // Today's guests
+                    const todayReservations = reservations.filter(r => r.date === today && r.status !== 'cancelled');
+                    addLog('Today\'s reservations (non-cancelled): ' + todayReservations.length);
+                    todayGuests = todayReservations.reduce((sum, r) => sum + (parseInt(r.numberOfGuests) || 0), 0);
+                    addLog('Today\'s guests total: ' + todayGuests);
+
+                    // Calculate occupied tables based on actual current time
+                    occupiedTables = 0;
+                    const occupiedTableIds = new Set();
+                    addLog('Calculating occupied tables...');
+
+                    for (const reservation of reservations) {
+                        // Skip cancelled reservations
+                        if (reservation.status === 'cancelled') {
+                            continue;
+                        }
+
+                        // Check if reservation is for today
+                        if (reservation.date !== today) {
+                            continue;
+                        }
+
+                        // Parse reservation time
+                        const startTimeParts = (reservation.startTime || '').split(':');
+                        if (startTimeParts.length !== 2) {
+                            addLog('Warning: Invalid startTime for reservation ' + reservation.id);
+                            continue;
+                        }
+
+                        const reservationHour = parseInt(startTimeParts[0]) || 0;
+                        const reservationMinute = parseInt(startTimeParts[1]) || 0;
+                        const reservationStartMinutes = reservationHour * 60 + reservationMinute;
+                        const duration = parseInt(reservation.duration) || 60; // Default 60 minutes
+                        const reservationEndMinutes = reservationStartMinutes + duration;
+
+                        addLog('Reservation ' + reservation.id + ' (table ' + reservation.tableId + '): ' +
+                              reservation.startTime + '-' + duration + 'min, ' +
+                              'starts at ' + reservationStartMinutes + 'min, ends at ' + reservationEndMinutes + 'min');
+
+                        // Check if reservation is currently active
+                        if (currentMinutes >= reservationStartMinutes && currentMinutes < reservationEndMinutes) {
+                            const tableId = parseInt(reservation.tableId);
+                            if (!isNaN(tableId)) {
+                                occupiedTableIds.add(tableId);
+                                addLog('Table ' + tableId + ' is currently occupied');
+                            }
+                        }
+                    }
+
+                    occupiedTables = occupiedTableIds.size;
+                    addLog('Occupied tables count: ' + occupiedTables);
+                    addLog('Occupied table IDs: ' + Array.from(occupiedTableIds).join(', '));
+
+                    document.getElementById('activeReservations').textContent = activeReservations;
+                    document.getElementById('occupiedTables').textContent = occupiedTables;
+                    document.getElementById('todayGuests').textContent = todayGuests;
+
+                    addLog('=== Dashboard updated successfully ===');
+                    return {
+                        totalTables,
+                        activeReservations,
+                        todayGuests,
+                        occupiedTables,
+                        success: true
+                    };
+                } else {
+                    addLog('No reservations data found, setting default values');
+                    // Set default values if no reservations data
+                    document.getElementById('activeReservations').textContent = '0';
+                    document.getElementById('occupiedTables').textContent = '0';
+                    document.getElementById('todayGuests').textContent = '0';
+                    return {
+                        totalTables,
+                        activeReservations: 0,
+                        todayGuests: 0,
+                        occupiedTables: 0,
+                        success: true
+                    };
+                }
+
+            } catch (error) {
+                addLog('ERROR: ' + error.message);
+                addLog('Error stack: ' + error.stack);
+                // Set fallback values on error
+                document.getElementById('totalTables').textContent = '0';
+                document.getElementById('activeReservations').textContent = '0';
+                document.getElementById('occupiedTables').textContent = '0';
+                document.getElementById('todayGuests').textContent = '0';
+                return {
+                    totalTables: 0,
+                    activeReservations: 0,
+                    todayGuests: 0,
+                    occupiedTables: 0,
+                    success: false,
+                    error: error.message
+                };
+            }
+        }
+
+        async function testLoadQuickStats() {
+            const resultsDiv = document.getElementById('testResults');
+            resultsDiv.innerHTML = '<p>Running tests...</p>';
+
+            const result = await loadQuickStats();
+
+            // Run tests
+            const tests = [];
+
+            // Test 1: No NaN values
+            tests.push({
+                name: 'No NaN Values',
+                pass: !isNaN(result.totalTables) && !isNaN(result.activeReservations) &&
+                      !isNaN(result.todayGuests) && !isNaN(result.occupiedTables),
+                message: 'All values are valid numbers'
+            });
+
+            // Test 2: Total tables is positive number
+            tests.push({
+                name: 'Total Tables Valid',
+                pass: result.totalTables >= 0,
+                message: 'Total tables: ' + result.totalTables
+            });
+
+            // Test 3: Occupied tables is non-negative and <= total
+            tests.push({
+                name: 'Occupied Tables Valid',
+                pass: result.occupiedTables >= 0 && result.occupiedTables <= result.totalTables,
+                message: 'Occupied: ' + result.occupiedTables + ' / Total: ' + result.totalTables
+            });
+
+            // Test 4: Today's guests is non-negative
+            tests.push({
+                name: 'Today\'s Guests Valid',
+                pass: result.todayGuests >= 0,
+                message: 'Today\'s guests: ' + result.todayGuests
+            });
+
+            // Test 5: Active reservations is non-negative
+            tests.push({
+                name: 'Active Reservations Valid',
+                pass: result.activeReservations >= 0,
+                message: 'Active reservations: ' + result.activeReservations
+            });
+
+            // Test 6: Display values match result values
+            tests.push({
+                name: 'Display Values Match',
+                pass: document.getElementById('totalTables').textContent == result.totalTables &&
+                      document.getElementById('activeReservations').textContent == result.activeReservations &&
+                      document.getElementById('todayGuests').textContent == result.todayGuests &&
+                      document.getElementById('occupiedTables').textContent == result.occupiedTables,
+                message: 'All displayed values match calculated values'
+            });
+
+            // Display results
+            let html = '<h3>Test Results</h3>';
+            let allPassed = true;
+
+            tests.forEach(test => {
+                const statusClass = test.pass ? 'test-pass' : 'test-fail';
+                const statusIcon = test.pass ? '✓' : '✗';
+                html += `
+                    <div class="test-section ${statusClass}">
+                        <strong>${statusIcon} ${test.name}</strong>: ${test.message}
+                    </div>
+                `;
+                if (!test.pass) allPassed = false;
+            });
+
+            html += `<div class="test-section ${allPassed ? 'test-pass' : 'test-fail'}">
+                <strong>${allPassed ? '✓' : '✗'} Overall Result</strong>: ${allPassed ? 'ALL TESTS PASSED' : 'SOME TESTS FAILED'}
+            </div>`;
+
+            resultsDiv.innerHTML = html;
+
+            if (allPassed) {
+                addLog('✓ All tests passed!');
+            } else {
+                addLog('✗ Some tests failed');
+            }
+        }
+
+        // Auto-run on page load
+        window.addEventListener('load', function() {
+            setTimeout(testLoadQuickStats, 500);
+        });
+    </script>
+</body>
+</html>

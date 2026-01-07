@@ -252,19 +252,19 @@
                                 <!-- Quick Stats -->
                                 <div class="quick-stats" id="quickStats">
                                     <div class="stat-card">
-                                        <div class="stat-number" id="activeReservations">-</div>
+                                        <div class="stat-number" id="activeReservations">0</div>
                                         <div class="stat-label">Prenotazioni Attive</div>
                                     </div>
                                     <div class="stat-card">
-                                        <div class="stat-number" id="occupiedTables">-</div>
+                                        <div class="stat-number" id="occupiedTables">0</div>
                                         <div class="stat-label">Tavoli Occupati</div>
                                     </div>
                                     <div class="stat-card">
-                                        <div class="stat-number" id="todayGuests">-</div>
+                                        <div class="stat-number" id="todayGuests">0</div>
                                         <div class="stat-label">Ospiti Oggi</div>
                                     </div>
                                     <div class="stat-card">
-                                        <div class="stat-number" id="totalTables">-</div>
+                                        <div class="stat-number" id="totalTables">0</div>
                                         <div class="stat-label">Tavoli Totali</div>
                                     </div>
                                 </div>
@@ -410,51 +410,101 @@
         }
         
         async function loadQuickStats() {
+            // Initialize all stat variables with default values
+            let totalTables = 0;
+            let activeReservations = 0;
+            let todayGuests = 0;
+            let occupiedTables = 0;
+
             try {
                 // Load layout for total tables
                 const layoutResponse = await fetch('./php/api_layout.php?action=load&v=' + Date.now());
                 const layoutResult = await layoutResponse.json();
-                
-                if (layoutResult.success) {
-                    const totalTables = layoutResult.data.tables.length;
+
+                if (layoutResult.success && layoutResult.data && layoutResult.data.tables) {
+                    totalTables = layoutResult.data.tables.length;
                     document.getElementById('totalTables').textContent = totalTables;
+                } else {
+                    document.getElementById('totalTables').textContent = '0';
                 }
-                
+
                 // Load reservations for active stats
                 const reservationsResponse = await fetch('./php/api_reservations.php?action=list&v=' + Date.now());
                 const reservationsResult = await reservationsResponse.json();
-                
-                if (reservationsResult.success) {
+
+                if (reservationsResult.success && Array.isArray(reservationsResult.data)) {
                     const reservations = reservationsResult.data || [];
-                    const today = new Date().toISOString().split('T')[0];
-                    
-                    // Active reservations (upcoming or current)
-                    const activeReservations = reservations.filter(r => 
-                        r.status === 'upcoming' || 
+                    const now = new Date();
+                    const today = now.toISOString().split('T')[0];
+                    const currentHour = now.getHours();
+                    const currentMinute = now.getMinutes();
+                    const currentMinutes = currentHour * 60 + currentMinute;
+
+                    // Active reservations (upcoming or current today)
+                    activeReservations = reservations.filter(r =>
+                        r.status === 'upcoming' ||
                         (r.date === today && r.status !== 'cancelled')
                     ).length;
-                    
+
                     // Today's guests
                     const todayReservations = reservations.filter(r => r.date === today && r.status !== 'cancelled');
-                    const todayGuests = todayReservations.reduce((sum, r) => sum + r.numberOfGuests, 0);
-                    
-                    // Occupied tables (simulate based on current time)
-                    const currentTime = new Date();
-                    const currentHour = currentTime.getHours();
-                    const occupiedTables = Math.floor(Math.random() * Math.max(1, totalTables - 2)) + 1; // Simulate occupied tables
-                    
+                    todayGuests = todayReservations.reduce((sum, r) => sum + (parseInt(r.numberOfGuests) || 0), 0);
+
+                    // Calculate occupied tables based on actual current time
+                    occupiedTables = 0;
+                    const occupiedTableIds = new Set();
+
+                    for (const reservation of reservations) {
+                        // Skip cancelled reservations
+                        if (reservation.status === 'cancelled') {
+                            continue;
+                        }
+
+                        // Check if reservation is for today
+                        if (reservation.date !== today) {
+                            continue;
+                        }
+
+                        // Parse reservation time
+                        const startTimeParts = (reservation.startTime || '').split(':');
+                        if (startTimeParts.length !== 2) {
+                            continue;
+                        }
+
+                        const reservationHour = parseInt(startTimeParts[0]) || 0;
+                        const reservationMinute = parseInt(startTimeParts[1]) || 0;
+                        const reservationStartMinutes = reservationHour * 60 + reservationMinute;
+                        const duration = parseInt(reservation.duration) || 60; // Default 60 minutes
+                        const reservationEndMinutes = reservationStartMinutes + duration;
+
+                        // Check if reservation is currently active
+                        if (currentMinutes >= reservationStartMinutes && currentMinutes < reservationEndMinutes) {
+                            const tableId = parseInt(reservation.tableId);
+                            if (!isNaN(tableId)) {
+                                occupiedTableIds.add(tableId);
+                            }
+                        }
+                    }
+
+                    occupiedTables = occupiedTableIds.size;
+
                     document.getElementById('activeReservations').textContent = activeReservations;
                     document.getElementById('occupiedTables').textContent = occupiedTables;
                     document.getElementById('todayGuests').textContent = todayGuests;
+                } else {
+                    // Set default values if no reservations data
+                    document.getElementById('activeReservations').textContent = '0';
+                    document.getElementById('occupiedTables').textContent = '0';
+                    document.getElementById('todayGuests').textContent = '0';
                 }
-                
+
             } catch (error) {
                 console.error('Error loading quick stats:', error);
-                // Set fallback values
-                document.getElementById('totalTables').textContent = '-';
-                document.getElementById('activeReservations').textContent = '-';
-                document.getElementById('occupiedTables').textContent = '-';
-                document.getElementById('todayGuests').textContent = '-';
+                // Set fallback values on error
+                document.getElementById('totalTables').textContent = '0';
+                document.getElementById('activeReservations').textContent = '0';
+                document.getElementById('occupiedTables').textContent = '0';
+                document.getElementById('todayGuests').textContent = '0';
             }
         }
     </script>
