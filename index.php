@@ -176,18 +176,18 @@
             padding: 1.5rem;
             border-radius: 15px;
             text-align: center;
-            color: white;
         }
         
         .stat-number {
             font-size: 2rem;
             font-weight: bold;
+            color: #495057;
             margin-bottom: 0.5rem;
         }
         
         .stat-label {
             font-size: 0.9rem;
-            opacity: 0.9;
+            color: #6c757d;
         }
     </style>
 </head>
