@@ -270,14 +270,33 @@
         
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
+            // Ensure data arrays are initialized
+            allReservations = [];
+            filteredReservations = [];
+            allTables = [];
+
+            // Initialize statistics to 0 before loading data
+            initializeStatistics();
+
             updateCurrentTime();
             loadLayout();
             loadReservations();
             setupAutoUpdate();
-            
+
             // Update time every second
             setInterval(updateCurrentTime, 1000);
         });
+
+        function initializeStatistics() {
+            // Set all statistics to 0 on page load
+            const statsIds = ['totalReservations', 'activeTables', 'occupiedTables', 'todayReservations'];
+            statsIds.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.textContent = '0';
+                }
+            });
+        }
         
         function updateCurrentTime() {
             // Set timezone to Europe/Rome for consistent calculations
@@ -297,9 +316,22 @@
             try {
                 const response = await fetch('./php/api_layout.php?action=load&v=' + Date.now());
                 const result = await response.json();
-                
+
                 if (result.success) {
-                    allTables = result.data.tables || [];
+                    // Validate and sanitize table data
+                    allTables = (result.data.tables || [])
+                        .filter(t => t && t.id !== undefined)
+                        .map(t => ({
+                            id: parseInt(t.id) || 0,
+                            x: parseInt(t.x) || 0,
+                            y: parseInt(t.y) || 0,
+                            width: parseInt(t.width) || 120,
+                            height: parseInt(t.height) || 80,
+                            seats: parseInt(t.seats) || 4,
+                            rotation: parseInt(t.rotation) || 0
+                        }))
+                        .filter(t => t.id > 0);
+
                     populateTableFilter();
                     updateTablesDashboard();
                 } else {
@@ -307,6 +339,8 @@
                 }
             } catch (error) {
                 console.error('Error loading layout:', error);
+                // Initialize with empty array to prevent errors
+                allTables = [];
             }
         }
         
@@ -314,9 +348,22 @@
             try {
                 const response = await fetch('./php/api_reservations.php?action=list&v=' + Date.now());
                 const result = await response.json();
-                
+
                 if (result.success) {
-                    allReservations = result.data || [];
+                    // Validate and sanitize reservation data
+                    allReservations = (result.data || []).map(r => ({
+                        id: r.id || '',
+                        tableId: parseInt(r.tableId) || 0,
+                        guestName: r.guestName || 'Unknown',
+                        numberOfGuests: parseInt(r.numberOfGuests) || 0,
+                        date: r.date || '',
+                        startTime: r.startTime || '',
+                        duration: parseInt(r.duration) || 60, // Default to 60 minutes
+                        status: r.status || 'upcoming',
+                        createdAt: r.createdAt || '',
+                        cancelledAt: r.cancelledAt || null
+                    })).filter(r => r.id && r.tableId && r.date && r.startTime);
+
                     filteredReservations = [...allReservations];
                     applyFilters();
                     updateStatistics();
@@ -326,6 +373,9 @@
             } catch (error) {
                 console.error('Error loading reservations:', error);
                 showNotification('Errore nel caricamento prenotazioni', 'danger');
+                // Initialize with empty arrays to prevent errors
+                allReservations = [];
+                filteredReservations = [];
             }
         }
         
@@ -344,7 +394,13 @@
         function updateTablesDashboard() {
             const dashboard = document.getElementById('tablesDashboard');
             dashboard.innerHTML = '';
-            
+
+            // Ensure allTables is initialized
+            if (!Array.isArray(allTables) || allTables.length === 0) {
+                dashboard.innerHTML = '<div class="col-12"><p class="text-muted text-center">Nessun tavolo configurato</p></div>';
+                return;
+            }
+
             allTables.forEach(table => {
                 const status = getTableCurrentStatus(table);
                 const card = createTableStatusCard(table, status);
@@ -375,12 +431,12 @@
             const currentHour = currentTime.getHours();
             const currentMinute = currentTime.getMinutes();
             const currentTimeInMinutes = currentHour * 60 + currentMinute;
-            
+
             // Find active reservations for this table
-            const tableReservations = allReservations.filter(r => 
+            const tableReservations = allReservations.filter(r =>
                 r.tableId === table.id && r.status !== 'cancelled'
             );
-            
+
             let status = {
                 text: 'Disponibile',
                 className: 'status-available',
@@ -388,15 +444,18 @@
                 occupant: null,
                 timeRemaining: null
             };
-            
+
             for (let reservation of tableReservations) {
                 // Create reservation date properly handling timezone
                 const [year, month, day] = reservation.date.split('-').map(Number);
                 const [hour, minute] = reservation.startTime.split(':').map(Number);
                 const reservationDate = new Date(year, month - 1, day, hour, minute, 0, 0);
-                const reservationEnd = new Date(reservationDate.getTime() + reservation.duration * 60000);
+
+                // Ensure duration is a valid number
+                const duration = parseInt(reservation.duration) || 60; // Default to 60 minutes if invalid
+                const reservationEnd = new Date(reservationDate.getTime() + duration * 60000);
                 const now = currentTime;
-                
+
                 if (reservation.date === currentDate) {
                     if (now >= reservationDate && now <= reservationEnd) {
                         // Currently occupied
@@ -420,7 +479,7 @@
                     }
                 }
             }
-            
+
             return status;
         }
         
@@ -563,13 +622,27 @@
         }
         
         function getReservationCurrentStatus(reservation) {
+            // Validate reservation data
+            if (!reservation || !reservation.date || !reservation.startTime) {
+                return { text: 'Dati mancanti', badgeClass: 'bg-secondary', current: false };
+            }
+
             // Create reservation date properly handling timezone
             const [year, month, day] = reservation.date.split('-').map(Number);
             const [hour, minute] = reservation.startTime.split(':').map(Number);
+
+            // Validate date components
+            if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) {
+                return { text: 'Data non valida', badgeClass: 'bg-secondary', current: false };
+            }
+
             const reservationDate = new Date(year, month - 1, day, hour, minute, 0, 0);
-            const reservationEnd = new Date(reservationDate.getTime() + reservation.duration * 60000);
+
+            // Ensure duration is a valid number
+            const duration = parseInt(reservation.duration) || 60; // Default to 60 minutes if invalid
+            const reservationEnd = new Date(reservationDate.getTime() + duration * 60000);
             const now = currentTime;
-            
+
             if (reservation.status === 'cancelled') {
                 return { text: 'Cancellata', badgeClass: 'bg-secondary', current: false };
             } else if (reservation.status === 'completed') {
@@ -588,9 +661,12 @@
             const [year, month, day] = reservation.date.split('-').map(Number);
             const [hour, minute] = reservation.startTime.split(':').map(Number);
             const reservationDate = new Date(year, month - 1, day, hour, minute, 0, 0);
-            const reservationEnd = new Date(reservationDate.getTime() + reservation.duration * 60000);
+
+            // Ensure duration is a valid number
+            const duration = parseInt(reservation.duration) || 60; // Default to 60 minutes if invalid
+            const reservationEnd = new Date(reservationDate.getTime() + duration * 60000);
             const now = currentTime;
-            
+
             if (reservation.status === 'cancelled') {
                 return '-';
             } else if (now >= reservationDate && now <= reservationEnd) {
@@ -608,22 +684,25 @@
             const [year, month, day] = reservation.date.split('-').map(Number);
             const [hour, minute] = reservation.startTime.split(':').map(Number);
             const reservationDate = new Date(year, month - 1, day, hour, minute, 0, 0);
-            const reservationEnd = new Date(reservationDate.getTime() + reservation.duration * 60000);
-            
+
+            // Ensure duration is a valid number
+            const duration = parseInt(reservation.duration) || 60; // Default to 60 minutes if invalid
+            const reservationEnd = new Date(reservationDate.getTime() + duration * 60000);
+
             let buttons = '';
-            
+
             if (reservation.status === 'upcoming' && now <= reservationEnd) {
                 buttons += `<button class="btn btn-sm btn-outline-danger" onclick="cancelReservation('${reservation.id}')">
                     <i class="bi bi-x-circle"></i> Cancella
                 </button>`;
             }
-            
+
             if (reservation.status === 'upcoming' && now >= reservationDate && now <= reservationEnd) {
                 buttons += `<button class="btn btn-sm btn-outline-success" onclick="markAsCompleted('${reservation.id}')">
                     <i class="bi bi-check-circle"></i> Completa
                 </button>`;
             }
-            
+
             return buttons || '<span class="text-muted">-</span>';
         }
         
@@ -666,26 +745,49 @@
         
         function updateStatistics() {
             const today = new Date().toISOString().split('T')[0];
-            
+
+            // Ensure filteredReservations is an array
+            if (!Array.isArray(filteredReservations)) {
+                console.warn('filteredReservations is not an array, initializing to empty array');
+                filteredReservations = [];
+            }
+
             // Total reservations (filtered)
             document.getElementById('totalReservations').textContent = filteredReservations.length;
-            
+
             // Active tables (tables with upcoming or occupied reservations)
-            const activeTableIds = new Set(
-                filteredReservations
-                    .filter(r => r.status === 'upcoming' || getReservationCurrentStatus(r).current)
-                    .map(r => r.tableId)
-            );
+            const activeTableIds = new Set();
+            filteredReservations.forEach(r => {
+                try {
+                    if (r.status === 'upcoming' || getReservationCurrentStatus(r).current) {
+                        const tableId = parseInt(r.tableId);
+                        if (!isNaN(tableId)) {
+                            activeTableIds.add(tableId);
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Error calculating active table for reservation:', r, error);
+                }
+            });
             document.getElementById('activeTables').textContent = activeTableIds.size;
-            
+
             // Occupied tables
-            const occupiedTableIds = new Set(
-                filteredReservations
-                    .filter(r => getReservationCurrentStatus(r).current)
-                    .map(r => r.tableId)
-            );
+            const occupiedTableIds = new Set();
+            filteredReservations.forEach(r => {
+                try {
+                    const status = getReservationCurrentStatus(r);
+                    if (status.current) {
+                        const tableId = parseInt(r.tableId);
+                        if (!isNaN(tableId)) {
+                            occupiedTableIds.add(tableId);
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Error calculating occupied table for reservation:', r, error);
+                }
+            });
             document.getElementById('occupiedTables').textContent = occupiedTableIds.size;
-            
+
             // Today's reservations
             const todayReservations = filteredReservations.filter(r => r.date === today);
             document.getElementById('todayReservations').textContent = todayReservations.length;
