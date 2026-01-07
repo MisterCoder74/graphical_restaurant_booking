@@ -130,6 +130,9 @@
                             <i class="bi bi-grid-3x3"></i> Planimetria Ristorante
                         </h4>
                         <div>
+                            <a href="index.php" class="btn btn-outline-secondary btn-sm me-2">
+                                <i class="bi bi-arrow-left"></i> Torna alla Dashboard
+                            </a>
                             <button class="btn btn-primary btn-sm" onclick="openAddTableModal()">
                                 <i class="bi bi-plus-circle"></i> Aggiungi Tavolo
                             </button>
@@ -238,8 +241,8 @@
                         
                         <div class="mb-3">
                             <label class="form-label">Posizione:</label>
-                            <p class="text-muted small">Clicca sul canvas per posizionare il tavolo</p>
-                            <div id="positionDisplay" class="text-info">Posizione: Non selezionata</div>
+                            <p class="text-muted small">Il tavolo verrà posizionato al centro del canvas e potrà essere trascinato in seguito</p>
+                            <div id="positionDisplay" class="text-info">Posizione: Centro del canvas</div>
                         </div>
                     </form>
                 </div>
@@ -383,8 +386,6 @@
         let draggedTable = null;
         let dragOffset = {x: 0, y: 0};
         let selectedTableForBooking = null;
-        let isAddingTable = false;
-        let tablePosition = {x: 0, y: 0};
         let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         let statusUpdateInterval;
         
@@ -411,19 +412,10 @@
         }
         
         function handleCanvasClick(event) {
-            if (isAddingTable) {
-                const rect = canvas.getBoundingClientRect();
-                tablePosition.x = Math.round(event.clientX - rect.left);
-                tablePosition.y = Math.round(event.clientY - rect.top);
-                
-                document.getElementById('positionDisplay').textContent = 
-                    `Posizione: (${tablePosition.x}, ${tablePosition.y})`;
-            }
+            // No longer needed - tables are added at default position
         }
         
         function handleMouseDown(event) {
-            if (isAddingTable) return;
-            
             const rect = canvas.getBoundingClientRect();
             const x = event.clientX - rect.left;
             const y = event.clientY - rect.top;
@@ -479,19 +471,12 @@
         }
         
         function openAddTableModal() {
-            isAddingTable = true;
-            tablePosition = {x: 0, y: 0};
-            document.getElementById('positionDisplay').textContent = 'Posizione: Non selezionata';
+            document.getElementById('positionDisplay').textContent = 'Posizione: Centro del canvas';
             document.getElementById('addTableModal').querySelector('.modal-title').textContent = 'Aggiungi Nuovo Tavolo';
             new bootstrap.Modal(document.getElementById('addTableModal')).show();
         }
         
         function addTable() {
-            if (tablePosition.x === 0 && tablePosition.y === 0) {
-                showNotification('Seleziona una posizione sul canvas', 'warning');
-                return;
-            }
-            
             const seats = parseInt(document.getElementById('tableSeats').value);
             const orientation = document.querySelector('input[name="orientation"]:checked').value;
             
@@ -505,6 +490,24 @@
                 height = seats * 20;
             }
             
+            // Calculate default position (center of canvas with offset for multiple tables)
+            const canvasCenterX = (canvas.width - width) / 2;
+            const canvasCenterY = (canvas.height - height) / 2;
+            
+            // Offset position based on number of existing tables to avoid overlap
+            const tableCount = tables.length;
+            const offsetX = (tableCount % 3) * 60; // Offset every 3rd table
+            const offsetY = Math.floor(tableCount / 3) * 60; // New row every 3 tables
+            
+            const defaultPosition = {
+                x: Math.round((canvasCenterX + offsetX) / 10) * 10, // Snap to grid
+                y: Math.round((canvasCenterY + offsetY) / 10) * 10
+            };
+            
+            // Ensure table stays within canvas bounds
+            defaultPosition.x = Math.max(10, Math.min(defaultPosition.x, canvas.width - width - 10));
+            defaultPosition.y = Math.max(10, Math.min(defaultPosition.y, canvas.height - height - 10));
+            
             // Generate next table ID
             const nextId = tables.length > 0 ? Math.max(...tables.map(t => t.id)) + 1 : 1;
             
@@ -512,15 +515,14 @@
                 id: nextId,
                 seats: seats,
                 orientation: orientation,
-                x: tablePosition.x,
-                y: tablePosition.y,
+                x: defaultPosition.x,
+                y: defaultPosition.y,
                 width: width,
                 height: height,
                 currentStatus: 'available'
             };
             
             tables.push(newTable);
-            isAddingTable = false;
             bootstrap.Modal.getInstance(document.getElementById('addTableModal')).hide();
             redrawCanvas();
             
