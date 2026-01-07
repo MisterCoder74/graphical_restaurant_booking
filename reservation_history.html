@@ -264,7 +264,7 @@
         let filteredReservations = [];
         let allTables = [];
         let currentTime = new Date();
-        let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        let timezone = 'Europe/Rome'; // Set consistent timezone
         let updateInterval;
         let confirmAction = null;
         
@@ -280,11 +280,13 @@
         });
         
         function updateCurrentTime() {
+            // Set timezone to Europe/Rome for consistent calculations
             currentTime = new Date();
             const timeString = currentTime.toLocaleTimeString('it-IT', {
                 hour: '2-digit',
                 minute: '2-digit',
-                second: '2-digit'
+                second: '2-digit',
+                timeZone: timezone
             });
             
             document.getElementById('currentTime').textContent = timeString;
@@ -388,7 +390,10 @@
             };
             
             for (let reservation of tableReservations) {
-                const reservationDate = new Date(reservation.date + ' ' + reservation.startTime);
+                // Create reservation date properly handling timezone
+                const [year, month, day] = reservation.date.split('-').map(Number);
+                const [hour, minute] = reservation.startTime.split(':').map(Number);
+                const reservationDate = new Date(year, month - 1, day, hour, minute, 0, 0);
                 const reservationEnd = new Date(reservationDate.getTime() + reservation.duration * 60000);
                 const now = currentTime;
                 
@@ -478,11 +483,16 @@
             
             // Filter by period (next N days)
             const today = new Date();
+            today.setHours(0, 0, 0, 0); // Reset time to start of day
+            
             const cutoffDate = new Date(today.getTime() + (periodFilter * 24 * 60 * 60 * 1000));
+            cutoffDate.setHours(23, 59, 59, 999); // Include entire last day
             
             filtered = filtered.filter(r => {
                 const reservationDate = new Date(r.date);
-                return reservationDate >= today && reservationDate <= cutoffDate;
+                reservationDate.setHours(0, 0, 0, 0); // Normalize to start of day for comparison
+                const isInRange = reservationDate >= today && reservationDate <= cutoffDate;
+                return isInRange;
             });
             
             // Sort by date and time
@@ -553,9 +563,12 @@
         }
         
         function getReservationCurrentStatus(reservation) {
-            const now = currentTime;
-            const reservationDate = new Date(reservation.date + ' ' + reservation.startTime);
+            // Create reservation date properly handling timezone
+            const [year, month, day] = reservation.date.split('-').map(Number);
+            const [hour, minute] = reservation.startTime.split(':').map(Number);
+            const reservationDate = new Date(year, month - 1, day, hour, minute, 0, 0);
             const reservationEnd = new Date(reservationDate.getTime() + reservation.duration * 60000);
+            const now = currentTime;
             
             if (reservation.status === 'cancelled') {
                 return { text: 'Cancellata', badgeClass: 'bg-secondary', current: false };
@@ -571,7 +584,10 @@
         }
         
         function getTimeRemainingForReservation(reservation) {
-            const reservationDate = new Date(reservation.date + ' ' + reservation.startTime);
+            // Create reservation date properly handling timezone
+            const [year, month, day] = reservation.date.split('-').map(Number);
+            const [hour, minute] = reservation.startTime.split(':').map(Number);
+            const reservationDate = new Date(year, month - 1, day, hour, minute, 0, 0);
             const reservationEnd = new Date(reservationDate.getTime() + reservation.duration * 60000);
             const now = currentTime;
             
@@ -588,7 +604,10 @@
         
         function getActionButtons(reservation) {
             const now = currentTime;
-            const reservationDate = new Date(reservation.date + ' ' + reservation.startTime);
+            // Create reservation date properly handling timezone
+            const [year, month, day] = reservation.date.split('-').map(Number);
+            const [hour, minute] = reservation.startTime.split(':').map(Number);
+            const reservationDate = new Date(year, month - 1, day, hour, minute, 0, 0);
             const reservationEnd = new Date(reservationDate.getTime() + reservation.duration * 60000);
             
             let buttons = '';
