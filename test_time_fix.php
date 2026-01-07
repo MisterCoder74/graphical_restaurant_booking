@@ -3,7 +3,7 @@
 header('Content-Type: text/html; charset=utf-8');
 
 echo "<h2>Test Booking System - Time Calculation Fix</h2>";
-echo "<p><strong>Current Date</strong>: 7 gennaio 2026</p>";
+echo "<p><strong>Current Date</strong>: 7 January 2026</p>";
 
 // Sample test data
 $testBookings = [

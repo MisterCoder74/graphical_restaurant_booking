@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema Gestione Ristorante</title>
+    <title>Restaurant Management System</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
@@ -198,7 +198,7 @@
             <div class="container">
                 <a class="navbar-brand" href="index.php">
                     <i class="bi bi-shop"></i>
-                    Sistema Gestione Ristorante
+                    Restaurant Management System
                 </a>
                 
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -209,17 +209,17 @@
                     <ul class="navbar-nav me-auto">
                         <li class="nav-item">
                             <a class="nav-link" href="graphical_reservation.html">
-                                <i class="bi bi-grid-3x3"></i> Planimetria
+                                <i class="bi bi-grid-3x3"></i> Graphical Reservation
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="reservation_history.html">
-                                <i class="bi bi-clock-history"></i> Storico
+                                <i class="bi bi-clock-history"></i> Reservation History
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="statistics.html">
-                                <i class="bi bi-bar-chart"></i> Statistiche
+                                <i class="bi bi-bar-chart"></i> Statistics
                             </a>
                         </li>
                     </ul>
@@ -242,10 +242,10 @@
                                 <div class="text-center mb-5">
                                     <h1 class="display-4 mb-3" style="color: #495057;">
                                         <i class="bi bi-shop-window text-primary"></i>
-                                        Benvenuto nel Sistema di Gestione Ristorante
+                                        Welcome to the Restaurant Management System
                                     </h1>
                                     <p class="lead text-muted">
-                                        Gestisci prenotazioni, pianifica tavoli e analizza le performance del tuo ristorante
+                                        Manage bookings, plan tables, and analyze your restaurant's performance
                                     </p>
                                 </div>
                                 
@@ -253,19 +253,19 @@
                                 <div class="quick-stats" id="quickStats">
                                     <div class="stat-card">
                                         <div class="stat-number" id="activeReservations">0</div>
-                                        <div class="stat-label">Prenotazioni Attive</div>
+                                        <div class="stat-label">Active Bookings</div>
                                     </div>
                                     <div class="stat-card">
                                         <div class="stat-number" id="occupiedTables">0</div>
-                                        <div class="stat-label">Tavoli Occupati</div>
+                                        <div class="stat-label">Occupied Tables</div>
                                     </div>
                                     <div class="stat-card">
                                         <div class="stat-number" id="todayGuests">0</div>
-                                        <div class="stat-label">Ospiti Oggi</div>
+                                        <div class="stat-label">Guests Today</div>
                                     </div>
                                     <div class="stat-card">
                                         <div class="stat-number" id="totalTables">0</div>
-                                        <div class="stat-label">Tavoli Totali</div>
+                                        <div class="stat-label">Total Tables</div>
                                     </div>
                                 </div>
                                 
@@ -276,10 +276,10 @@
                                             <div class="page-icon text-primary">
                                                 <i class="bi bi-grid-3x3"></i>
                                             </div>
-                                            <div class="page-title">Planimetria Interattiva</div>
+                                            <div class="page-title">Interactive Floor Plan</div>
                                             <div class="page-description">
-                                                Progetta e gestisci la disposizione dei tavoli con il sistema canvas-based. 
-                                                Trascina i tavoli, crea prenotazioni e monitora lo stato in tempo reale.
+                                                Design and manage your table layout with a canvas-based system.
+                                                Drag tables, create bookings, and monitor status in real time.
                                             </div>
                                         </div>
                                     </div>
@@ -288,10 +288,10 @@
                                             <div class="page-icon text-success">
                                                 <i class="bi bi-clock-history"></i>
                                             </div>
-                                            <div class="page-title">Monitor & Storico</div>
+                                            <div class="page-title">Monitoring & History</div>
                                             <div class="page-description">
-                                                Visualizza lo stato attuale di tutti i tavoli e gestisci l'archivio delle prenotazioni 
-                                                con filtri avanzati e aggiornamenti automatici.
+                                                View the current status of all tables and manage your booking archive
+                                                with advanced filters and automatic updates.
                                             </div>
                                         </div>
                                     </div>
@@ -300,10 +300,10 @@
                                             <div class="page-icon text-info">
                                                 <i class="bi bi-bar-chart"></i>
                                             </div>
-                                            <div class="page-title">Analytics & Statistiche</div>
+                                            <div class="page-title">Analytics & Statistics</div>
                                             <div class="page-description">
-                                                Analizza le performance del ristorante con grafici interattivi, 
-                                                tassi di utilizzo e metriche dettagliate.
+                                                Analyze restaurant performance with interactive charts,
+                                                utilization rates, and detailed metrics.
                                             </div>
                                         </div>
                                     </div>
@@ -319,8 +319,8 @@
         <section class="features-section">
             <div class="container">
                 <div class="text-center mb-5">
-                    <h2 class="text-white mb-3">Funzionalità Principali</h2>
-                    <p class="text-white-50">Tutto quello che serve per gestire il tuo ristorante in modo efficiente</p>
+                    <h2 class="text-white mb-3">Key Features</h2>
+                    <p class="text-white-50">Everything you need to manage your restaurant efficiently</p>
                 </div>
                 
                 <div class="row">
@@ -331,7 +331,7 @@
                             </div>
                             <div class="feature-title">Drag & Drop</div>
                             <div class="feature-description">
-                                Riposiziona i tavoli trascinandoli sul canvas con snap-to-grid automatico
+                                Reposition tables by dragging them on the canvas with automatic snap-to-grid
                             </div>
                         </div>
                     </div>
@@ -340,9 +340,9 @@
                             <div class="feature-icon">
                                 <i class="bi bi-clock"></i>
                             </div>
-                            <div class="feature-title">Tempo Reale</div>
+                            <div class="feature-title">Real Time</div>
                             <div class="feature-description">
-                                Stato tavoli e prenotazioni si aggiornano automaticamente ogni 30 secondi
+                                Table and booking status updates automatically every 30 seconds
                             </div>
                         </div>
                     </div>
@@ -351,9 +351,9 @@
                             <div class="feature-icon">
                                 <i class="bi bi-shield-check"></i>
                             </div>
-                            <div class="feature-title">Anti-Confitto</div>
+                            <div class="feature-title">Conflict Prevention</div>
                             <div class="feature-description">
-                                Sistema di rilevamento conflitti per evitare sovrapposizioni di prenotazioni
+                                Conflict detection to prevent overlapping bookings
                             </div>
                         </div>
                     </div>
@@ -368,13 +368,13 @@
                     <div class="col-md-6">
                         <p class="mb-0">
                             <i class="bi bi-c-circle"></i>
-                            2024 Sistema Gestione Ristorante. Tutti i diritti riservati.
+                            2024 Restaurant Management System. All rights reserved.
                         </p>
                     </div>
                     <div class="col-md-6 text-md-end">
                         <p class="mb-0">
                             <i class="bi bi-code-square"></i>
-                            Sviluppato con HTML5, Bootstrap 5, Vanilla JS e PHP
+                            Built with HTML5, Bootstrap 5, Vanilla JS, and PHP
                         </p>
                     </div>
                 </div>
