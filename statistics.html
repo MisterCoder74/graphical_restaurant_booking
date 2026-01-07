@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Statistiche - Sistema Gestione Ristorante</title>
+    <title>Statistics - Restaurant Management System</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -188,18 +188,18 @@
                 <div class="col-md-8">
                     <h1 class="mb-2">
                         <i class="bi bi-bar-chart"></i>
-                        Dashboard Statistiche
+                        Statistics Dashboard
                     </h1>
                     <p class="mb-0 opacity-75">
-                        Analisi dettagliata delle performance del ristorante
+                        Detailed analysis of restaurant performance
                     </p>
                 </div>
                 <div class="col-md-4 text-end">
                     <div class="d-flex flex-column align-items-end">
-                        <small class="opacity-75">Ultimo aggiornamento</small>
+                        <small class="opacity-75">Last updated</small>
                         <div id="lastUpdateTime" class="fw-bold"></div>
                         <a href="index.php" class="btn btn-light btn-sm mt-2">
-                            <i class="bi bi-arrow-left"></i> Torna alla Dashboard
+                            <i class="bi bi-arrow-left"></i> Back to Dashboard
                         </a>
                     </div>
                 </div>
@@ -214,7 +214,7 @@
                         <i class="bi bi-percent"></i>
                     </div>
                     <div class="stats-number" id="overallUtilization">0%</div>
-                    <div class="stats-label">Utilizzo Generale</div>
+                    <div class="stats-label">Overall Utilization</div>
                 </div>
             </div>
             <div class="col-md-3">
@@ -223,7 +223,7 @@
                         <i class="bi bi-check-circle"></i>
                     </div>
                     <div class="stats-number" id="completionRate">0%</div>
-                    <div class="stats-label">Tasso Completamento</div>
+                    <div class="stats-label">Completion Rate</div>
                 </div>
             </div>
             <div class="col-md-3">
@@ -232,7 +232,7 @@
                         <i class="bi bi-people"></i>
                     </div>
                     <div class="stats-number" id="totalGuests">0</div>
-                    <div class="stats-label">Ospiti Serviti (7gg)</div>
+                    <div class="stats-label">Guests Served (7d)</div>
                 </div>
             </div>
             <div class="col-md-3">
@@ -241,7 +241,7 @@
                         <i class="bi bi-clock"></i>
                     </div>
                     <div class="stats-number" id="averagePartySize">0</div>
-                    <div class="stats-label">Media Ospiti/Prenotazione</div>
+                    <div class="stats-label">Avg Guests/Booking</div>
                 </div>
             </div>
         </div>
@@ -252,11 +252,11 @@
                 <div class="progress-section">
                     <h5 class="mb-3">
                         <i class="bi bi-bar-chart"></i>
-                        Utilizzo Tavoli (Ultimi 7 giorni)
+                        Table Utilization (Last 7 days)
                     </h5>
                     <div id="overallUtilizationBar" class="mb-3">
                         <div class="utilization-label">
-                            <span>Utilizzo Generale</span>
+                            <span>Overall Utilization</span>
                             <span class="fw-bold" id="overallUtilizationValue">0%</span>
                         </div>
                         <div class="utilization-bar">
@@ -264,7 +264,7 @@
                         </div>
                     </div>
                     <div id="perTableUtilization" class="mt-4">
-                        <h6>Utilizzo per Tavolo</h6>
+                        <h6>Utilization by Table</h6>
                         <div class="table-list" id="tableUtilizationList">
                             <!-- Table utilization bars will be populated here -->
                         </div>
@@ -273,7 +273,7 @@
             </div>
             <div class="col-lg-4">
                 <div class="chart-container">
-                    <h6 class="text-center mb-3">Distribuzione Status</h6>
+                    <h6 class="text-center mb-3">Status Distribution</h6>
                     <canvas id="statusChart"></canvas>
                 </div>
             </div>
@@ -285,14 +285,14 @@
                 <div class="chart-container">
                     <h5 class="text-center mb-3">
                         <i class="bi bi-clock-history"></i>
-                        Ore di Maggior Affluenza (Ultimi 7 giorni)
+                        Busiest Hours (Last 7 days)
                     </h5>
                     <canvas id="busiestHoursChart"></canvas>
                 </div>
             </div>
             <div class="col-lg-4">
                 <div class="progress-section">
-                    <h6 class="mb-3">Top 5 Ore di Punta</h6>
+                    <h6 class="mb-3">Top 5 Peak Hours</h6>
                     <div id="topBusiestHours">
                         <!-- Top hours will be populated here -->
                     </div>
@@ -306,35 +306,35 @@
                 <div class="chart-container">
                     <h5 class="text-center mb-3">
                         <i class="bi bi-pie-chart"></i>
-                        Tasso di Completamento Prenotazioni (30 giorni)
+                        Booking Completion Rate (30 days)
                     </h5>
                     <canvas id="completionChart"></canvas>
                 </div>
             </div>
             <div class="col-lg-6">
                 <div class="progress-section">
-                    <h6 class="mb-3">Dettaglio Completamento</h6>
+                    <h6 class="mb-3">Completion Breakdown</h6>
                     <div class="metric-grid">
                         <div class="metric-item">
                             <div class="percentage-circle bg-success" id="completedPercentage">0%</div>
-                            <div class="metric-description">Completate</div>
+                            <div class="metric-description">Completed</div>
                         </div>
                         <div class="metric-item">
                             <div class="percentage-circle bg-danger" id="cancelledPercentage">0%</div>
-                            <div class="metric-description">Cancellate</div>
+                            <div class="metric-description">Cancelled</div>
                         </div>
                         <div class="metric-item">
                             <div class="percentage-circle bg-warning" id="noShowPercentage">0%</div>
-                            <div class="metric-description">Non Presentate</div>
+                            <div class="metric-description">No-Show</div>
                         </div>
                         <div class="metric-item">
                             <div class="percentage-circle bg-info" id="upcomingPercentage">0%</div>
-                            <div class="metric-description">In Attesa</div>
+                            <div class="metric-description">Upcoming</div>
                         </div>
                     </div>
                     <div class="mt-3">
                         <small class="text-muted">
-                            <strong>Totale prenotazioni analizzate:</strong> <span id="totalAnalyzedReservations">0</span>
+                            <strong>Total bookings analyzed:</strong> <span id="totalAnalyzedReservations">0</span>
                         </small>
                     </div>
                 </div>
@@ -347,24 +347,24 @@
                 <div class="stats-card">
                     <h5 class="mb-3">
                         <i class="bi bi-calendar3"></i>
-                        Metriche Aggiuntive (Ultimi 7 giorni)
+                        Additional Metrics (Last 7 days)
                     </h5>
                     <div class="row">
                         <div class="col-md-3 text-center">
                             <div class="metric-value text-primary" id="peakDayBookings">0</div>
-                            <div class="metric-description">Prenotazioni nel giorno di punta</div>
+                            <div class="metric-description">Bookings on the peak day</div>
                         </div>
                         <div class="col-md-3 text-center">
                             <div class="metric-value text-success" id="peakDayName">-</div>
-                            <div class="metric-description">Giorno di punta della settimana</div>
+                            <div class="metric-description">Busiest day of the week</div>
                         </div>
                         <div class="col-md-3 text-center">
                             <div class="metric-value text-info" id="averageDuration">0 min</div>
-                            <div class="metric-description">Durata media prenotazioni</div>
+                            <div class="metric-description">Average booking duration</div>
                         </div>
                         <div class="col-md-3 text-center">
                             <div class="metric-value text-warning" id="tablesUtilized">0</div>
-                            <div class="metric-description">Tavoli utilizzati</div>
+                            <div class="metric-description">Tables utilized</div>
                         </div>
                     </div>
                 </div>
@@ -375,16 +375,16 @@
         <div class="row">
             <div class="col-lg-12">
                 <div class="alert alert-info">
-                    <h6><i class="bi bi-info-circle"></i> Informazioni sui Dati</h6>
+                    <h6><i class="bi bi-info-circle"></i> Data Information</h6>
                     <div class="row">
                         <div class="col-md-4">
-                            <small><strong>Periodo analisi utilizzo:</strong> Ultimi 7 giorni</small>
+                            <small><strong>Utilization analysis period:</strong> Last 7 days</small>
                         </div>
                         <div class="col-md-4">
-                            <small><strong>Periodo analisi completamento:</strong> Ultimi 30 giorni</small>
+                            <small><strong>Completion analysis period:</strong> Last 30 days</small>
                         </div>
                         <div class="col-md-4">
-                            <small><strong>Aggiornamento automatico:</strong> Ogni 5 minuti</small>
+                            <small><strong>Auto refresh:</strong> Every 5 minutes</small>
                         </div>
                     </div>
                 </div>
@@ -393,7 +393,7 @@
     </div>
     
     <!-- Refresh Button -->
-    <button class="btn btn-primary refresh-btn" onclick="refreshStatistics()" title="Aggiorna Statistiche">
+    <button class="btn btn-primary refresh-btn" onclick="refreshStatistics()" title="Refresh Statistics">
         <i class="bi bi-arrow-clockwise"></i>
     </button>
     
@@ -438,7 +438,7 @@
                     throw new Error(result.error);
                 }
             } catch (error) {
-                showError('Errore nel caricamento delle statistiche: ' + error.message);
+                showError('Error loading statistics: ' + error.message);
             } finally {
                 hideLoading();
             }
@@ -496,7 +496,7 @@
             const perTableData = statisticsData.utilizationRate.perTable;
             
             if (Object.keys(perTableData).length === 0) {
-                container.innerHTML = '<div class="no-data">Nessun dato disponibile</div>';
+                container.innerHTML = '<div class="no-data">No data available</div>';
                 return;
             }
             
@@ -517,7 +517,7 @@
                 
                 item.innerHTML = `
                     <div>
-                        <strong>Tavolo ${tableId}</strong>
+                        <strong>Table ${tableId}</strong>
                     </div>
                     <div style="flex: 1; margin: 0 1rem;">
                         <div class="utilization-bar" style="height: 20px;">
@@ -538,7 +538,7 @@
             const topHours = statisticsData.busiestHours.slice(0, 5);
             
             if (topHours.length === 0) {
-                container.innerHTML = '<div class="no-data">Nessun dato disponibile</div>';
+                container.innerHTML = '<div class="no-data">No data available</div>';
                 return;
             }
             
@@ -609,7 +609,7 @@
             charts.statusChart = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Completate', 'Cancellate', 'Non Presentate', 'In Attesa'],
+                    labels: ['Completed', 'Cancelled', 'No-Show', 'Upcoming'],
                     datasets: [{
                         data: [
                             rates.completed,
@@ -650,7 +650,7 @@
                 data: {
                     labels: hours,
                     datasets: [{
-                        label: 'Numero Prenotazioni',
+                        label: 'Number of Bookings',
                         data: bookings,
                         backgroundColor: chartColors.primary,
                         borderColor: chartColors.primary,
@@ -686,7 +686,7 @@
             charts.completionChart = new Chart(ctx, {
                 type: 'pie',
                 data: {
-                    labels: ['Completate', 'Cancellate', 'Non Presentate', 'In Attesa'],
+                    labels: ['Completed', 'Cancelled', 'No-Show', 'Upcoming'],
                     datasets: [{
                         data: [
                             rates.completed,
@@ -736,8 +736,8 @@
         
         function updateLastUpdateTime() {
             const now = new Date();
-            document.getElementById('lastUpdateTime').textContent = 
-                now.toLocaleString('it-IT');
+            document.getElementById('lastUpdateTime').textContent =
+                now.toLocaleString('en-GB');
         }
         
         async function refreshStatistics() {
@@ -750,7 +750,7 @@
             await loadStatistics();
             
             // Show success notification
-            showNotification('Statistiche aggiornate', 'success');
+            showNotification('Statistics updated', 'success');
         }
         
         function setupAutoUpdate() {

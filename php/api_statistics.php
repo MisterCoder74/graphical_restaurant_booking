@@ -229,7 +229,7 @@ try {
         
         echo json_encode(['success' => true, 'data' => $response]);
     } else {
-        throw new Exception('Metodo non supportato');
+        throw new Exception('Method not supported');
     }
     
 } catch (Exception $e) {

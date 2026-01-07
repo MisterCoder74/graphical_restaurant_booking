@@ -59,7 +59,7 @@ try {
                 $input = json_decode(file_get_contents('php://input'), true);
                 
                 if (!isset($input['tables']) || !is_array($input['tables'])) {
-                    throw new Exception("Dati layout non validi");
+                    throw new Exception("Invalid layout data");
                 }
                 
                 $layout = [
@@ -70,7 +70,7 @@ try {
                 ];
                 
                 saveLayout($layout);
-                echo json_encode(['success' => true, 'message' => 'Layout salvato con successo']);
+                echo json_encode(['success' => true, 'message' => 'Layout saved successfully']);
             }
             break;
             
@@ -84,12 +84,12 @@ try {
                 ];
                 
                 saveLayout($layout);
-                echo json_encode(['success' => true, 'message' => 'Layout cancellato']);
+                echo json_encode(['success' => true, 'message' => 'Layout cleared']);
             }
             break;
             
         default:
-            throw new Exception('Metodo non supportato');
+            throw new Exception('Method not supported');
     }
     
 } catch (Exception $e) {

@@ -41,7 +41,7 @@ function validateBookingConflict($newBooking, $existingBookings) {
         if ($newStart < $existingEnd && $newEnd > $existingStart) {
             return [
                 'conflict' => true,
-                'message' => 'Conflitto con prenotazione esistente: ' . $booking['guestName'] . 
+                'message' => 'Conflict with existing booking: ' . $booking['guestName'] .
                            ' (' . $booking['date'] . ' ' . $booking['startTime'] . ')'
             ];
         }
@@ -85,7 +85,7 @@ try {
                 $required = ['tableId', 'guestName', 'numberOfGuests', 'date', 'startTime', 'duration'];
                 foreach ($required as $field) {
                     if (empty($input[$field])) {
-                        throw new Exception("Campo obbligatorio mancante: $field");
+                        throw new Exception("Missing required field: $field");
                     }
                 }
                 
@@ -94,7 +94,7 @@ try {
                 // Validate guest count
                 $tableId = intval($input['tableId']);
                 if ($input['numberOfGuests'] > 12) { // Assuming max 12 seats per table
-                    throw new Exception("Numero di ospiti troppo alto per questo tavolo");
+                    throw new Exception("Number of guests is too high for this table");
                 }
                 
                 // Check for conflicts
@@ -131,7 +131,7 @@ try {
                 $reservationId = $input['id'] ?? null;
                 
                 if (!$reservationId) {
-                    throw new Exception("ID prenotazione mancante");
+                    throw new Exception("Missing booking ID");
                 }
                 
                 $data = loadReservations();
@@ -154,11 +154,11 @@ try {
                 }
                 
                 if (!$found) {
-                    throw new Exception("Prenotazione non trovata");
+                    throw new Exception("Booking not found");
                 }
                 
                 saveReservations($data);
-                echo json_encode(['success' => true, 'message' => 'Prenotazione aggiornata']);
+                echo json_encode(['success' => true, 'message' => 'Booking updated']);
             }
             break;
             
@@ -167,7 +167,7 @@ try {
                 $reservationId = $_GET['id'] ?? null;
                 
                 if (!$reservationId) {
-                    throw new Exception("ID prenotazione mancante");
+                    throw new Exception("Missing booking ID");
                 }
                 
                 $data = loadReservations();
@@ -183,16 +183,16 @@ try {
                 }
                 
                 if (!$found) {
-                    throw new Exception("Prenotazione non trovata");
+                    throw new Exception("Booking not found");
                 }
                 
                 saveReservations($data);
-                echo json_encode(['success' => true, 'message' => 'Prenotazione cancellata']);
+                echo json_encode(['success' => true, 'message' => 'Booking cancelled']);
             }
             break;
             
         default:
-            throw new Exception('Metodo non supportato');
+            throw new Exception('Method not supported');
     }
     
 } catch (Exception $e) {
