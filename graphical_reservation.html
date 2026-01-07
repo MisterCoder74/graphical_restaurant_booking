@@ -23,6 +23,8 @@
         #floorCanvas {
             cursor: crosshair;
             display: block;
+            user-select: none;
+            -webkit-user-select: none;
             background-image: 
                 linear-gradient(to right, #f0f0f0 1px, transparent 1px),
                 linear-gradient(to bottom, #f0f0f0 1px, transparent 1px);
@@ -117,6 +119,44 @@
         .canvas-wrapper {
             position: relative;
         }
+
+        /* Custom context menu (tasto destro) */
+        #tableContextMenu {
+            position: fixed;
+            z-index: 2000;
+            display: none;
+            min-width: 190px;
+            padding: 0.25rem 0;
+            background-color: #212529;
+            color: #f8f9fa;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 0.375rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.35);
+        }
+
+        #tableContextMenu .context-menu-item {
+            width: 100%;
+            padding: 0.5rem 1rem;
+            border: 0;
+            background: transparent;
+            color: inherit;
+            text-align: left;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        #tableContextMenu .context-menu-item:hover {
+            background-color: rgba(255, 255, 255, 0.12);
+        }
+
+        #tableContextMenu .context-menu-divider {
+            height: 1px;
+            margin: 0.25rem 0;
+            background-color: rgba(255, 255, 255, 0.12);
+        }
     </style>
 </head>
 <body>
@@ -200,7 +240,7 @@
                     <div class="alert alert-info">
                         <small>
                             <i class="bi bi-info-circle"></i>
-                            Trascina i tavoli per riposizionarli. Clicca su un tavolo per vedere i dettagli.
+                            Trascina i tavoli per riposizionarli. Tasto destro su un tavolo per azioni e dettagli.
                         </small>
                     </div>
                 </div>
@@ -373,6 +413,39 @@
             </div>
         </div>
     </div>
+
+    <!-- Delete Table Confirmation Modal -->
+    <div class="modal fade" id="deleteTableModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Conferma Eliminazione Tavolo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Sei sicuro di voler eliminare il tavolo <strong id="deleteTableId"></strong>? Questa azione non può essere annullata.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="button" class="btn btn-danger" onclick="confirmDeleteTable()">Elimina Tavolo</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Context Menu (tasto destro) -->
+    <div id="tableContextMenu" role="menu" aria-hidden="true">
+        <button type="button" class="context-menu-item" data-action="create-booking">
+            <i class="bi bi-calendar-plus"></i> Crea Prenotazione
+        </button>
+        <button type="button" class="context-menu-item" data-action="view-details">
+            <i class="bi bi-info-circle"></i> Vedi Dettagli
+        </button>
+        <div class="context-menu-divider"></div>
+        <button type="button" class="context-menu-item" data-action="delete-table">
+            <i class="bi bi-trash"></i> Elimina Tavolo
+        </button>
+    </div>
     
     <!-- Notifications -->
     <div id="notificationContainer"></div>
@@ -388,34 +461,40 @@
         let selectedTableForBooking = null;
         let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         let statusUpdateInterval;
+
+        let contextMenu = null;
+        let contextMenuTable = null;
+        let tableToDelete = null;
         
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
             canvas = document.getElementById('floorCanvas');
             ctx = canvas.getContext('2d');
-            
+            contextMenu = document.getElementById('tableContextMenu');
+
             setupCanvasEvents();
+            setupContextMenuEvents();
             generateTimeSlots();
             loadLayout();
             startStatusUpdates();
-            
+
             // Set minimum date to today
             document.getElementById('bookingDate').min = new Date().toISOString().split('T')[0];
         });
         
         function setupCanvasEvents() {
-            canvas.addEventListener('click', handleCanvasClick);
             canvas.addEventListener('mousedown', handleMouseDown);
             canvas.addEventListener('mousemove', handleMouseMove);
             canvas.addEventListener('mouseup', handleMouseUp);
             canvas.addEventListener('contextmenu', handleRightClick);
         }
         
-        function handleCanvasClick(event) {
-            // No longer needed - tables are added at default position
-        }
-        
         function handleMouseDown(event) {
+            hideContextMenu();
+
+            // Solo trascinamento con tasto sinistro
+            if (event.button !== 0) return;
+
             const rect = canvas.getBoundingClientRect();
             const x = event.clientX - rect.left;
             const y = event.clientY - rect.top;
@@ -451,23 +530,169 @@
         }
         
         function handleRightClick(event) {
+            // Disabilita il menu contestuale del browser sul canvas
             event.preventDefault();
+
             const rect = canvas.getBoundingClientRect();
             const x = event.clientX - rect.left;
             const y = event.clientY - rect.top;
-            
-            // Check if right-clicking on a table
-            for (let table of tables) {
-                if (x >= table.x && x <= table.x + table.width && 
+
+            const table = getTableAtCanvasPosition(x, y);
+            if (!table) {
+                hideContextMenu();
+                return;
+            }
+
+            showContextMenu(event.clientX, event.clientY, table);
+        }
+
+        function setupContextMenuEvents() {
+            if (!contextMenu) return;
+
+            contextMenu.addEventListener('click', function(event) {
+                const item = event.target.closest('[data-action]');
+                if (!item) return;
+
+                event.preventDefault();
+                event.stopPropagation();
+
+                const action = item.dataset.action;
+                const table = contextMenuTable;
+
+                hideContextMenu();
+                if (!table) return;
+
+                switch (action) {
+                    case 'create-booking':
+                        selectedTableForBooking = table;
+                        resetBookingForm();
+                        openBookingModal();
+                        break;
+                    case 'view-details':
+                        showTableDetails(table);
+                        break;
+                    case 'delete-table':
+                        openDeleteTableModal(table);
+                        break;
+                }
+            });
+
+            document.addEventListener('click', function(event) {
+                if (!contextMenu || contextMenu.style.display !== 'block') return;
+                if (contextMenu.contains(event.target)) return;
+                hideContextMenu();
+            });
+
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape') {
+                    hideContextMenu();
+                }
+            });
+
+            window.addEventListener('blur', hideContextMenu);
+            window.addEventListener('resize', hideContextMenu);
+            window.addEventListener('scroll', hideContextMenu, true);
+        }
+
+        function getTableAtCanvasPosition(x, y) {
+            for (let i = tables.length - 1; i >= 0; i--) {
+                const table = tables[i];
+                if (x >= table.x && x <= table.x + table.width &&
                     y >= table.y && y <= table.y + table.height) {
-                    
-                    if (confirm(`Sei sicuro di voler eliminare il tavolo ${table.id}?`)) {
-                        tables = tables.filter(t => t.id !== table.id);
-                        redrawCanvas();
-                    }
-                    break;
+                    return table;
                 }
             }
+            return null;
+        }
+
+        function showContextMenu(clientX, clientY, table) {
+            if (!contextMenu) return;
+
+            contextMenuTable = table;
+
+            contextMenu.style.display = 'block';
+            contextMenu.style.visibility = 'hidden';
+            contextMenu.style.left = '0px';
+            contextMenu.style.top = '0px';
+
+            const menuWidth = contextMenu.offsetWidth;
+            const menuHeight = contextMenu.offsetHeight;
+            const canvasRect = canvas.getBoundingClientRect();
+            const padding = 6;
+
+            const minLeft = Math.max(padding, canvasRect.left + padding);
+            const minTop = Math.max(padding, canvasRect.top + padding);
+            const maxLeft = Math.min(window.innerWidth - menuWidth - padding, canvasRect.right - menuWidth - padding);
+            const maxTop = Math.min(window.innerHeight - menuHeight - padding, canvasRect.bottom - menuHeight - padding);
+
+            let left = clientX;
+            let top = clientY;
+
+            if (maxLeft < minLeft) {
+                left = minLeft;
+            } else {
+                left = Math.min(Math.max(left, minLeft), maxLeft);
+            }
+
+            if (maxTop < minTop) {
+                top = minTop;
+            } else {
+                top = Math.min(Math.max(top, minTop), maxTop);
+            }
+
+            contextMenu.style.left = `${left}px`;
+            contextMenu.style.top = `${top}px`;
+            contextMenu.style.visibility = 'visible';
+        }
+
+        function hideContextMenu() {
+            if (!contextMenu) return;
+            contextMenu.style.display = 'none';
+            contextMenu.style.visibility = 'hidden';
+            contextMenuTable = null;
+        }
+
+        function openDeleteTableModal(table) {
+            tableToDelete = table;
+            document.getElementById('deleteTableId').textContent = table.id;
+            new bootstrap.Modal(document.getElementById('deleteTableModal')).show();
+        }
+
+        function confirmDeleteTable() {
+            if (!tableToDelete) return;
+
+            const tableId = tableToDelete.id;
+            tables = tables.filter(t => t.id !== tableId);
+
+            if (selectedTableForBooking && selectedTableForBooking.id === tableId) {
+                selectedTableForBooking = null;
+            }
+
+            const deleteModalEl = document.getElementById('deleteTableModal');
+            const deleteModal = bootstrap.Modal.getInstance(deleteModalEl);
+            if (deleteModal) {
+                deleteModal.hide();
+            }
+
+            const detailsModalEl = document.getElementById('tableDetailsModal');
+            if (detailsModalEl && detailsModalEl.classList.contains('show')) {
+                const detailsModal = bootstrap.Modal.getInstance(detailsModalEl);
+                if (detailsModal) {
+                    detailsModal.hide();
+                }
+            }
+
+            redrawCanvas();
+            showNotification(`Tavolo ${tableId} eliminato con successo`, 'success');
+            tableToDelete = null;
+        }
+
+        function resetBookingForm() {
+            const form = document.getElementById('bookingForm');
+            if (form) {
+                form.reset();
+            }
+            document.querySelectorAll('.time-slot').forEach(slot => slot.classList.remove('selected'));
         }
         
         function openAddTableModal() {
@@ -882,22 +1107,7 @@
             }, 60000); // Update every minute
         }
         
-        // Add click handler to canvas for table details
-        canvas.addEventListener('click', function(event) {
-            if (isAddingTable || draggedTable) return;
-            
-            const rect = canvas.getBoundingClientRect();
-            const x = event.clientX - rect.left;
-            const y = event.clientY - rect.top;
-            
-            for (let table of tables) {
-                if (x >= table.x && x <= table.x + table.width && 
-                    y >= table.y && y <= table.y + table.height) {
-                    showTableDetails(table);
-                    break;
-                }
-            }
-        });
+        // Click singolo: nessuna azione (solo trascinamento)
     </script>
 </body>
 </html>
