@@ -461,6 +461,7 @@
         let selectedTableForBooking = null;
         let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         let statusUpdateInterval;
+        let allReservations = [];
 
         let contextMenu = null;
         let contextMenuTable = null;
@@ -476,10 +477,15 @@
             setupContextMenuEvents();
             generateTimeSlots();
             loadLayout();
+            fetchAllReservations();
             startStatusUpdates();
 
             // Set minimum date to today
-            document.getElementById('bookingDate').min = new Date().toISOString().split('T')[0];
+            const now = new Date();
+            const today = now.getFullYear() + '-' + 
+                          String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                          String(now.getDate()).padStart(2, '0');
+            document.getElementById('bookingDate').min = today;
         });
         
         function setupCanvasEvents() {
@@ -785,21 +791,49 @@
             );
         }
         
-        function getTableStatusColor(table) {
-            // Get current status based on reservations
-            const currentTime = new Date();
-            const currentDate = currentTime.toISOString().split('T')[0];
-            const currentHour = currentTime.getHours();
-            const currentMinute = currentTime.getMinutes();
+        function getTableStatus(tableId) {
+            const now = new Date();
+            const today = now.getFullYear() + '-' + 
+                          String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                          String(now.getDate()).padStart(2, '0');
             
-            // This would need to be implemented with real reservation data
-            // For now, return based on a simple heuristic
-            if (Math.random() > 0.7) {
-                return '#ffc107'; // Yellow - booked
-            } else if (Math.random() > 0.9) {
-                return '#dc3545'; // Red - occupied
+            // Trova prenotazioni per questo tavolo oggi che non sono cancellate
+            const tableReservations = allReservations.filter(r => 
+                r.tableId == tableId && 
+                r.date === today && 
+                r.status !== 'cancelled'
+            );
+            
+            let status = 'available';
+            
+            for (const res of tableReservations) {
+                const [hours, minutes] = res.startTime.split(':').map(Number);
+                const startTime = new Date(now);
+                startTime.setHours(hours, minutes, 0, 0);
+                
+                const endTime = new Date(startTime.getTime() + res.duration * 60000);
+                
+                if (now >= startTime && now < endTime) {
+                    return 'occupied'; // Priorità massima: occupato ora
+                }
+                
+                // Se c'è una prenotazione imminente (nelle prossime 2 ore)
+                if (now < startTime && (startTime - now) < 2 * 60 * 60 * 1000) {
+                    status = 'booked';
+                }
             }
-            return '#28a745'; // Green - available
+            
+            return status;
+        }
+
+        function getTableStatusColor(table) {
+            const status = getTableStatus(table.id);
+            console.log(`Tavolo ${table.id} stato calcolato: ${status}`);
+            switch(status) {
+                case 'occupied': return '#dc3545'; // Rosso
+                case 'booked': return '#ffc107'; // Giallo
+                default: return '#28a745'; // Verde
+            }
         }
         
         function generateTimeSlots() {
@@ -877,6 +911,20 @@
                 showNotification('Errore nel caricamento: ' + error.message, 'danger');
             }
         }
+
+        async function fetchAllReservations() {
+            try {
+                const response = await fetch('./php/api_reservations.php?action=list&v=' + Date.now());
+                const result = await response.json();
+                if (result.success) {
+                    allReservations = result.data;
+                    console.log('Prenotazioni caricate:', allReservations);
+                    redrawCanvas();
+                }
+            } catch (error) {
+                console.error('Errore nel caricamento delle prenotazioni:', error);
+            }
+        }
         
         function clearLayout() {
             new bootstrap.Modal(document.getElementById('clearLayoutModal')).show();
@@ -937,13 +985,21 @@
         }
         
         function getTableStatusText(table) {
-            // This would be implemented with real reservation data
-            return 'Disponibile';
+            const status = getTableStatus(table.id);
+            switch(status) {
+                case 'occupied': return 'Occupato';
+                case 'booked': return 'Prenotato';
+                default: return 'Disponibile';
+            }
         }
         
         function getTableStatusBadgeClass(table) {
-            // This would be implemented with real reservation data
-            return 'bg-success';
+            const status = getTableStatus(table.id);
+            switch(status) {
+                case 'occupied': return 'bg-danger';
+                case 'booked': return 'bg-warning text-dark';
+                default: return 'bg-success';
+            }
         }
         
         async function loadTableReservations(tableId) {
@@ -1044,7 +1100,7 @@
                     bootstrap.Modal.getInstance(document.getElementById('bookingModal')).hide();
                     document.getElementById('bookingForm').reset();
                     document.querySelectorAll('.time-slot').forEach(slot => slot.classList.remove('selected'));
-                    redrawCanvas();
+                    fetchAllReservations();
                 } else {
                     showNotification(result.error, 'danger');
                 }
@@ -1103,8 +1159,8 @@
         
         function startStatusUpdates() {
             statusUpdateInterval = setInterval(() => {
-                redrawCanvas();
-            }, 60000); // Update every minute
+                fetchAllReservations();
+            }, 60000); // Aggiorna ogni minuto
         }
         
         // Click singolo: nessuna azione (solo trascinamento)
