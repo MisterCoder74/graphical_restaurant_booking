@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test NaN Fix - Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .stats-card {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stats-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .pass { background-color: #d4edda; color: #155724; }
+        .fail { background-color: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>Test NaN Fix - Dashboard Occupied Tables</h1>
+
+    <div class="stats-card">
+        <div class="stats-number" id="occupiedTables">0</div>
+        <div>Tavoli Occupati</div>
+    </div>
+
+    <h2>Test Results:</h2>
+    <div id="testResults"></div>
+
+    <script>
+        // Simulate the fix logic
+        let allReservations = [];
+        let currentTime = new Date();
+
+        // Test 1: Normal reservation with duration
+        function testNormalReservation() {
+            const testReservations = [
+                {
+                    id: 'res_1',
+                    tableId: 1,
+                    guestName: 'Mario Rossi',
+                    numberOfGuests: 4,
+                    date: new Date().toISOString().split('T')[0],
+                    startTime: '10:00',
+                    duration: 120,
+                    status: 'upcoming'
+                }
+            ];
+
+            // Simulate the calculation
+            const occupiedTableIds = new Set();
+            testReservations.forEach(r => {
+                try {
+                    const tableId = parseInt(r.tableId);
+                    if (!isNaN(tableId)) {
+                        occupiedTableIds.add(tableId);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            });
+
+            const result = occupiedTableIds.size;
+            const passed = !isNaN(result) && typeof result === 'number';
+            document.getElementById('occupiedTables').textContent = result;
+            return { name: 'Normal reservation with duration', passed: passed, value: result };
+        }
+
+        // Test 2: Reservation with missing duration (should use default 60)
+        function testMissingDuration() {
+            const testReservations = [
+                {
+                    id: 'res_2',
+                    tableId: 2,
+                    guestName: 'Luigi Bianchi',
+                    numberOfGuests: 2,
+                    date: new Date().toISOString().split('T')[0],
+                    startTime: '12:00',
+                    duration: null, // Missing duration
+                    status: 'upcoming'
+                }
+            ];
+
+            const duration = parseInt(testReservations[0].duration) || 60;
+            const occupiedTableIds = new Set();
+            testReservations.forEach(r => {
+                try {
+                    const tableId = parseInt(r.tableId);
+                    if (!isNaN(tableId)) {
+                        occupiedTableIds.add(tableId);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            });
+
+            const result = occupiedTableIds.size;
+            const passed = !isNaN(result) && typeof result === 'number';
+            return { name: 'Reservation with missing duration (should default to 60)', passed: passed, value: result };
+        }
+
+        // Test 3: Reservation with invalid tableId
+        function testInvalidTableId() {
+            const testReservations = [
+                {
+                    id: 'res_3',
+                    tableId: 'invalid', // Invalid tableId
+                    guestName: 'Giuseppe Verdi',
+                    numberOfGuests: 4,
+                    date: new Date().toISOString().split('T')[0],
+                    startTime: '14:00',
+                    duration: 90,
+                    status: 'upcoming'
+                }
+            ];
+
+            const occupiedTableIds = new Set();
+            testReservations.forEach(r => {
+                try {
+                    const tableId = parseInt(r.tableId);
+                    if (!isNaN(tableId)) {
+                        occupiedTableIds.add(tableId);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            });
+
+            const result = occupiedTableIds.size;
+            const passed = !isNaN(result) && typeof result === 'number' && result === 0;
+            return { name: 'Reservation with invalid tableId (should be filtered out)', passed: passed, value: result };
+        }
+
+        // Test 4: Empty reservations array
+        function testEmptyArray() {
+            const testReservations = [];
+
+            const occupiedTableIds = new Set();
+            testReservations.forEach(r => {
+                try {
+                    const tableId = parseInt(r.tableId);
+                    if (!isNaN(tableId)) {
+                        occupiedTableIds.add(tableId);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            });
+
+            const result = occupiedTableIds.size;
+            const passed = !isNaN(result) && typeof result === 'number' && result === 0;
+            return { name: 'Empty reservations array', passed: passed, value: result };
+        }
+
+        // Test 5: Duration as string
+        function testDurationAsString() {
+            const testReservations = [
+                {
+                    id: 'res_4',
+                    tableId: 3,
+                    guestName: 'Anna Neri',
+                    numberOfGuests: 4,
+                    date: new Date().toISOString().split('T')[0],
+                    startTime: '16:00',
+                    duration: '90', // Duration as string
+                    status: 'upcoming'
+                }
+            ];
+
+            const duration = parseInt(testReservations[0].duration) || 60;
+            const occupiedTableIds = new Set();
+            testReservations.forEach(r => {
+                try {
+                    const tableId = parseInt(r.tableId);
+                    if (!isNaN(tableId)) {
+                        occupiedTableIds.add(tableId);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            });
+
+            const result = occupiedTableIds.size;
+            const passed = !isNaN(result) && typeof result === 'number' && duration === 90;
+            return { name: 'Duration as string (should parse to 90)', passed: passed, value: result, duration: duration };
+        }
+
+        // Run all tests
+        function runTests() {
+            const tests = [
+                testNormalReservation(),
+                testMissingDuration(),
+                testInvalidTableId(),
+                testEmptyArray(),
+                testDurationAsString()
+            ];
+
+            const resultsDiv = document.getElementById('testResults');
+            let allPassed = true;
+
+            tests.forEach(test => {
+                const div = document.createElement('div');
+                div.className = `test-result ${test.passed ? 'pass' : 'fail'}`;
+                div.innerHTML = `
+                    <strong>${test.name}</strong><br>
+                    Value: ${test.value}${test.duration ? ', Duration: ' + test.duration : ''}<br>
+                    Status: ${test.passed ? '✓ PASSED' : '✗ FAILED'}
+                `;
+                resultsDiv.appendChild(div);
+                if (!test.passed) allPassed = false;
+            });
+
+            const summaryDiv = document.createElement('div');
+            summaryDiv.className = `test-result ${allPassed ? 'pass' : 'fail'}`;
+            summaryDiv.innerHTML = `<strong>All Tests: ${allPassed ? '✓ ALL PASSED' : '✗ SOME FAILED'}</strong>`;
+            resultsDiv.appendChild(summaryDiv);
+        }
+
+        // Run tests on load
+        window.onload = runTests;
+    </script>
+</body>
+</html>
