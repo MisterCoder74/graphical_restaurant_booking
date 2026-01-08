@@ -435,7 +435,16 @@
             // Find active reservations for this table
             const tableReservations = allReservations.filter(r =>
                 r.tableId === table.id && r.status !== 'cancelled'
-            );
+            ).sort((a, b) => {
+                // Sort by date and time to get the earliest/current reservation first
+                const [yearA, monthA, dayA] = a.date.split('-').map(Number);
+                const [hourA, minA] = a.startTime.split(':').map(Number);
+                const [yearB, monthB, dayB] = b.date.split('-').map(Number);
+                const [hourB, minB] = b.startTime.split(':').map(Number);
+                const dateA = new Date(yearA, monthA - 1, dayA, hourA, minA);
+                const dateB = new Date(yearB, monthB - 1, dayB, hourB, minB);
+                return dateA - dateB;
+            });
 
             let status = {
                 text: 'Available',
@@ -456,25 +465,27 @@
                 const reservationEnd = new Date(reservationDate.getTime() + duration * 60000);
                 const now = currentTime;
 
-                if (reservation.date === currentDate) {
-                    if (now >= reservationDate && now <= reservationEnd) {
-                        // Currently occupied
-                        status = {
-                            text: 'Occupied',
-                            className: 'status-occupied',
-                            badgeClass: 'bg-danger',
-                            occupant: reservation.guestName,
-                            timeRemaining: getTimeRemaining(reservationEnd)
-                        };
-                        break;
-                    } else if (reservationDate > now) {
-                        // Booked for future
+                if (now >= reservationDate && now <= reservationEnd) {
+                    // Currently occupied
+                    status = {
+                        text: 'Occupied',
+                        className: 'status-occupied',
+                        badgeClass: 'bg-danger',
+                        occupant: reservation.guestName,
+                        timeRemaining: getTimeRemaining(reservationEnd)
+                    };
+                    return status; // Exit early as occupied is highest priority
+                } else if (reservationDate > now) {
+                    // Booked for future (either today or later)
+                    if (status.text === 'Available') {
                         status = {
                             text: 'Booked',
                             className: 'status-booked',
                             badgeClass: 'bg-warning',
                             occupant: reservation.guestName,
-                            timeRemaining: 'Starts in ' + getTimeUntil(reservationDate)
+                            timeRemaining: reservation.date === currentDate ? 
+                                'Starts in ' + getTimeUntil(reservationDate) :
+                                'Booked for ' + reservation.date
                         };
                     }
                 }
