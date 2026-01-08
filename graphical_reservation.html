@@ -797,28 +797,27 @@
                           String(now.getMonth() + 1).padStart(2, '0') + '-' + 
                           String(now.getDate()).padStart(2, '0');
             
-            // Trova prenotazioni per questo tavolo oggi che non sono cancellate
+            // Trova tutte le prenotazioni non cancellate per questo tavolo
             const tableReservations = allReservations.filter(r => 
                 r.tableId == tableId && 
-                r.date === today && 
                 r.status !== 'cancelled'
             );
             
             let status = 'available';
             
             for (const res of tableReservations) {
-                const [hours, minutes] = res.startTime.split(':').map(Number);
-                const startTime = new Date(now);
-                startTime.setHours(hours, minutes, 0, 0);
-                
+                const [year, month, day] = res.date.split('-').map(Number);
+                const [hour, minute] = res.startTime.split(':').map(Number);
+                const startTime = new Date(year, month - 1, day, hour, minute, 0, 0);
                 const endTime = new Date(startTime.getTime() + res.duration * 60000);
                 
+                // 1. Priorità massima: Occupato ora
                 if (now >= startTime && now < endTime) {
-                    return 'occupied'; // Priorità massima: occupato ora
+                    return 'occupied';
                 }
                 
-                // Se c'è una prenotazione imminente (nelle prossime 2 ore)
-                if (now < startTime && (startTime - now) < 2 * 60 * 60 * 1000) {
+                // 2. Se non è occupato, controlla se è prenotato (oggi o futuro)
+                if (startTime > now) {
                     status = 'booked';
                 }
             }
